@@ -9,7 +9,10 @@ import searchPlugin from './routes/search';
 const server: FastifyInstance = fastify({ logger: true });
 
 server.register(cors, {
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173'
+  origin: process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(',').map(s => s.trim())
+    : true,
+  credentials: true
 });
 
 server.register(sensible);
@@ -22,8 +25,9 @@ server.register(searchPlugin);
 const start = async () => {
   try {
     const port = parseInt(process.env.PORT || '3001', 10);
-    await server.listen({ port });
-    console.log(`Server listening on port ${port}`);
+    const host = process.env.HOST || '0.0.0.0';
+    await server.listen({ port, host });
+    console.log(`Server listening on ${host}:${port}`);
   } catch (err) {
     server.log.error(err);
     process.exit(1);
