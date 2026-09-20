@@ -1,0 +1,99 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-primary: #FAFAFA;
+    --bg-card: rgba(255, 255, 255, 0.85);
+    --bg-panel: rgba(255, 255, 255, 0.92);
+    --bg-surface: #F4F4F5;
+    --border-primary: rgba(228, 228, 231, 0.8);
+    --border-subtle: rgba(228, 228, 231, 0.4);
+    --text-primary: #18181B;
+    --text-secondary: #71717A;
+    --text-muted: #A1A1AA;
+    --dot-grid-color: rgba(148, 163, 184, 0.22);
+    --edge-color: #94A3B8;
+    --glass-blur: 12px;
+    --panel-blur: 16px;
+  }
+
+  [data-theme="dark"] {
+    --bg-primary: #09090B;
+    --bg-card: rgba(15, 23, 42, 0.85);
+    --bg-panel: rgba(11, 15, 25, 0.92);
+    --bg-surface: #18181B;
+    --border-primary: rgba(39, 39, 42, 0.8);
+    --border-subtle: rgba(39, 39, 42, 0.4);
+    --text-primary: #F4F4F5;
+    --text-secondary: #A1A1AA;
+    --text-muted: #71717A;
+    --dot-grid-color: rgba(148, 163, 184, 0.14);
+    --edge-color: #334155;
+  }
+
+  body {
+    @apply font-sans antialiased overflow-hidden select-none;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+  }
+}
+
+@layer utilities {
+  .glass-card {
+    background: var(--bg-card);
+    backdrop-filter: blur(var(--glass-blur));
+  }
+
+  .glass-panel {
+    background: var(--bg-panel);
+    backdrop-filter: blur(var(--panel-blur));
+  }
+
+  .canvas-dot-grid {
+    background-image: radial-gradient(var(--dot-grid-color) 1.2px, transparent 1.2px);
+    background-size: 28px 28px;
+  }
+
+  .connection-line {
+    stroke: var(--edge-color);
+    stroke-width: 2;
+    fill: none;
+    stroke-linecap: round;
+    transition: stroke 0.3s, stroke-width 0.3s;
+  }
+
+  .connection-line.highlight {
+    stroke: #C5A059;
+    stroke-width: 2.75;
+    stroke-dasharray: 6 3;
+    animation: dash 30s linear infinite;
+  }
+
+  .spotlight-active .tree-card:not(.is-spotlighted) {
+    filter: blur(4px) saturate(0.6);
+    opacity: 0.25;
+    transform: scale(0.96);
+    pointer-events: auto;
+  }
+}
+
+/* Luxury scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-primary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}

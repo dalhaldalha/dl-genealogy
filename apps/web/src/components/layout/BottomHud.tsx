@@ -1,0 +1,45 @@
+import React from 'react';
+import { Heart } from 'lucide-react';
+
+interface BottomHudProps {
+  miniMap?: React.ReactNode;
+  adminFab?: React.ReactNode;
+}
+
+export const BottomHud: React.FC<BottomHudProps> = ({ miniMap, adminFab }) => {
+  return (
+    <>
+      {/* Bottom-Left: Mini Map Navigator */}
+      <div className="absolute bottom-6 left-6 z-20 hidden md:block pointer-events-auto">
+        {miniMap}
+      </div>
+
+      {/* Bottom-Center: Legend & Stats Banner */}
+      <div className="absolute bottom-3 sm:bottom-6 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
+        <div className="glass-panel px-3 py-1.5 sm:px-4 sm:py-2 rounded-full border border-zinc-200/80 dark:border-zinc-800 shadow-lg flex items-center gap-2 sm:gap-4 text-[11px] sm:text-xs whitespace-nowrap">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+            <span className="text-zinc-600 dark:text-zinc-300">Living</span>
+          </div>
+          <div className="w-px h-3 bg-zinc-300 dark:bg-zinc-700" />
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-zinc-400 shrink-0" />
+            <span className="text-zinc-600 dark:text-zinc-300">Deceased</span>
+          </div>
+          <div className="w-px h-3 bg-zinc-300 dark:bg-zinc-700" />
+          <div className="flex items-center gap-1.5">
+            <Heart className="w-3 h-3 text-rose-500 fill-rose-500/20 shrink-0" />
+            <span className="text-zinc-600 dark:text-zinc-300">Marriage</span>
+          </div>
+          <div className="w-px h-3 bg-zinc-300 dark:bg-zinc-700 hidden sm:block" />
+          <span className="text-zinc-400 text-[11px] hidden sm:inline">Click any card to Spotlight · Drag to Pan</span>
+        </div>
+      </div>
+
+      {/* Bottom-Right: Admin Quick Action FAB */}
+      <div className="pointer-events-auto">
+        {adminFab}
+      </div>
+    </>
+  );
+};

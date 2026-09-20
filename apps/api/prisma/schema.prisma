@@ -1,0 +1,131 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model FamilyTree {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String   @db.VarChar(200)
+  subtitle  String?  @db.VarChar(500)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members FamilyMember[]
+
+  @@map("family_trees")
+}
+
+enum Gender {
+  male
+  female
+  other
+  unknown
+}
+
+enum Branch {
+  paternal
+  maternal
+}
+
+model FamilyMember {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  treeId      String    @db.Uuid
+  firstName   String    @db.VarChar(100)
+  lastName    String    @db.VarChar(100)
+  maidenName  String?   @db.VarChar(100)
+  gender      Gender    @default(unknown)
+  dateOfBirth DateTime
+  dateOfDeath DateTime?
+  isDeceased  Boolean   @default(false)
+  generation  Int       @default(1)
+  branch      Branch    @default(paternal)
+  profession  String?   @db.VarChar(300)
+  residence   String?   @db.VarChar(300)
+  bio         String?   @db.Text
+  avatarUrl   String?   @db.VarChar(2048)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  tree FamilyTree @relation(fields: [treeId], references: [id], onDelete: Cascade)
+
+  parentOf         ParentChild[]   @relation("ParentRelation")
+  childOf          ParentChild[]   @relation("ChildRelation")
+  unionsAsPartner1 Union[]         @relation("Partner1")
+  unionsAsPartner2 Union[]         @relation("Partner2")
+  artifacts        MediaArtifact[]
+
+  @@index([treeId])
+  @@index([treeId, branch])
+  @@index([lastName, firstName])
+  @@map("family_members")
+}
+
+enum RelationshipType {
+  biological
+  adoptive
+  step
+}
+
+model ParentChild {
+  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  parentId         String           @db.Uuid
+  childId          String           @db.Uuid
+  relationshipType RelationshipType @default(biological)
+  createdAt        DateTime         @default(now())
+
+  parent FamilyMember @relation("ParentRelation", fields: [parentId], references: [id], onDelete: Cascade)
+  child  FamilyMember @relation("ChildRelation", fields: [childId], references: [id], onDelete: Cascade)
+
+  @@unique([parentId, childId])
+  @@index([childId])
+  @@map("parent_child")
+}
+
+enum UnionType {
+  marriage
+  partnership
+  divorced
+}
+
+model Union {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  partner1Id      String    @db.Uuid
+  partner2Id      String    @db.Uuid
+  unionType       UnionType @default(marriage)
+  unionDate       DateTime?
+  dissolutionDate DateTime?
+  createdAt       DateTime  @default(now())
+
+  partner1 FamilyMember @relation("Partner1", fields: [partner1Id], references: [id], onDelete: Cascade)
+  partner2 FamilyMember @relation("Partner2", fields: [partner2Id], references: [id], onDelete: Cascade)
+
+  @@unique([partner1Id, partner2Id])
+  @@map("unions")
+}
+
+enum ArtifactType {
+  photo
+  document
+  letter
+  certificate
+}
+
+model MediaArtifact {
+  id           String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  memberId     String       @db.Uuid
+  url          String       @db.VarChar(2048)
+  thumbnailUrl String?      @db.VarChar(2048)
+  caption      String?      @db.VarChar(500)
+  artifactType ArtifactType @default(photo)
+  sortOrder    Int          @default(0)
+  createdAt    DateTime     @default(now())
+
+  member FamilyMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([memberId])
+  @@map("media_artifacts")
+}

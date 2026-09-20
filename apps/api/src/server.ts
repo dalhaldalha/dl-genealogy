@@ -1,0 +1,39 @@
+import fastify, { FastifyInstance } from 'fastify';
+import cors from '@fastify/cors';
+import sensible from '@fastify/sensible';
+import treesPlugin from './routes/trees';
+import membersPlugin from './routes/members';
+import relationshipsPlugin from './routes/relationships';
+import searchPlugin from './routes/search';
+
+const server: FastifyInstance = fastify({ logger: true });
+
+server.register(cors, {
+  origin: process.env.CORS_ORIGIN || 'http://localhost:5173'
+});
+
+server.register(sensible);
+
+server.register(treesPlugin);
+server.register(membersPlugin);
+server.register(relationshipsPlugin);
+server.register(searchPlugin);
+
+const start = async () => {
+  try {
+    const port = parseInt(process.env.PORT || '3001', 10);
+    await server.listen({ port });
+    console.log(`Server listening on port ${port}`);
+  } catch (err) {
+    server.log.error(err);
+    process.exit(1);
+  }
+};
+
+process.on('SIGINT', async () => {
+  console.log('Shutting down gracefully...');
+  await server.close();
+  process.exit(0);
+});
+
+start();
