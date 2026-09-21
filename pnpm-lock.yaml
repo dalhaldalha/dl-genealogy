@@ -7,7 +7,26 @@ settings:
 importers:
 
   .:
+    dependencies:
+      '@fastify/cors':
+        specifier: ^10.0.0
+        version: 10.1.0
+      '@fastify/sensible':
+        specifier: ^6.0.0
+        version: 6.0.5
+      '@prisma/client':
+        specifier: ^6.0.0
+        version: 6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)
+      fastify:
+        specifier: ^5.0.0
+        version: 5.12.5
+      zod:
+        specifier: ^3.23.0
+        version: 3.25.76
     devDependencies:
+      prisma:
+        specifier: ^6.0.0
+        version: 6.19.3(typescript@5.9.3)
       turbo:
         specifier: ^2.5.0
         version: 2.11.2
