@@ -18,6 +18,7 @@ interface TopNavBarProps {
 
 export const TopNavBar: React.FC<TopNavBarProps> = ({
   treeTitle = 'DL-GENEALOGY',
+  treeSubtitle,
   recordCount = 14,
   members,
   activeBranch,
@@ -53,12 +54,9 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
               <span className="font-serif tracking-wider font-bold text-sm sm:text-base text-zinc-900 dark:text-zinc-50">
                 {treeTitle}
               </span>
-              <span className="hidden sm:inline-block text-[10px] uppercase tracking-widest font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
-                Archive Est. 1892
-              </span>
             </div>
             <p className="hidden md:block text-xs text-zinc-500 dark:text-zinc-400 font-medium">
-              Heritage Lineage · 4 Generations · {recordCount} Records
+              {treeSubtitle || (recordCount > 0 ? `${recordCount} ${recordCount === 1 ? 'Record' : 'Records'}` : 'Family Lineage Archive')}
             </p>
           </div>
         </div>
