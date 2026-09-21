@@ -14,7 +14,8 @@ const memberBaseSchema = z.object({
   bio: z.string().nullable().optional().or(z.literal('')),
   avatarUrl: z.string().nullable().optional().or(z.literal('')),
   spouseId: z.string().nullable().optional().or(z.literal('')),
-  parentId: z.string().nullable().optional().or(z.literal('')),
+  fatherId: z.string().nullable().optional().or(z.literal('')),
+  motherId: z.string().nullable().optional().or(z.literal('')),
 });
 
 export const createMemberSchema = memberBaseSchema.refine((data) => {

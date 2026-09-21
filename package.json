@@ -10,7 +10,9 @@
     "test": "turbo test",
     "db:migrate": "pnpm --filter api db:migrate",
     "db:seed": "pnpm --filter api db:seed",
-    "db:push": "pnpm --filter api db:push"
+    "db:push": "pnpm --filter api db:push",
+    "prisma:generate": "pnpm --filter @kinfolk/api exec prisma generate",
+    "postinstall": "pnpm --filter @kinfolk/api exec prisma generate"
   },
   "devDependencies": {
     "turbo": "^2.5.0",

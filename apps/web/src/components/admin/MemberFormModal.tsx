@@ -14,7 +14,8 @@ interface MemberFormModalProps {
   initialData: FamilyMember | null;
   allMembers: FamilyMember[];
   initialSpouseId?: string | null;
-  initialParentId?: string | null;
+  initialFatherId?: string | null;
+  initialMotherId?: string | null;
 }
 
 export const MemberFormModal: React.FC<MemberFormModalProps> = ({
@@ -25,7 +26,8 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
   initialData,
   allMembers,
   initialSpouseId,
-  initialParentId,
+  initialFatherId,
+  initialMotherId,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -55,7 +57,8 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
       avatarUrl: '',
       bio: '',
       spouseId: '',
-      parentId: '',
+      fatherId: '',
+      motherId: '',
     },
   });
 
@@ -77,7 +80,8 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
           avatarUrl: initialData.avatarUrl || '',
           bio: initialData.bio || '',
           spouseId: initialSpouseId || '',
-          parentId: initialParentId || '',
+          fatherId: initialFatherId || '',
+          motherId: initialMotherId || '',
         });
       } else {
         reset({
@@ -94,7 +98,8 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
           avatarUrl: '',
           bio: '',
           spouseId: '',
-          parentId: initialParentId || '',
+          fatherId: initialFatherId || '',
+          motherId: initialMotherId || '',
         });
       }
       setUploadError(null);
@@ -104,7 +109,7 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
         fileInputRef.current.value = '';
       }
     }
-  }, [isOpen, initialData, initialSpouseId, initialParentId, reset]);
+  }, [isOpen, initialData, initialSpouseId, initialFatherId, initialMotherId, reset]);
 
   const isDeceased = watch('isDeceased');
   const avatarUrl = watch('avatarUrl');
@@ -413,7 +418,21 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
             <span className="font-bold text-zinc-600 dark:text-zinc-300 block text-[11px] uppercase tracking-wider">
               Lineage Relational Linkages
             </span>
+
+            {/* Gender & Spouse row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
+              <div>
+                <label className="block text-zinc-500 mb-1 text-[11px]">Gender</label>
+                <select
+                  {...register('gender')}
+                  className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200"
+                >
+                  <option value="unknown">Not Specified</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
               <div>
                 <label className="block text-zinc-500 mb-1 text-[11px]">Spouse (Optional)</label>
                 <select
@@ -428,18 +447,40 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
                   ))}
                 </select>
               </div>
+            </div>
+
+            {/* Father & Mother row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
               <div>
-                <label className="block text-zinc-500 mb-1 text-[11px]">Parent (Branch Anchor)</label>
+                <label className="block text-zinc-500 mb-1 text-[11px]">Father (Optional)</label>
                 <select
-                  {...register('parentId')}
+                  {...register('fatherId')}
                   className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200"
                 >
-                  <option value="">Root Generation (No Parents)</option>
-                  {eligibleMembers.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.firstName} {m.lastName} (Gen {m.generation})
-                    </option>
-                  ))}
+                  <option value="">No Father Linked</option>
+                  {eligibleMembers
+                    .filter((m) => m.gender === 'male' || m.gender === 'unknown')
+                    .map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.firstName} {m.lastName} (Gen {m.generation})
+                      </option>
+                    ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-zinc-500 mb-1 text-[11px]">Mother (Optional)</label>
+                <select
+                  {...register('motherId')}
+                  className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200"
+                >
+                  <option value="">No Mother Linked</option>
+                  {eligibleMembers
+                    .filter((m) => m.gender === 'female' || m.gender === 'unknown')
+                    .map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.firstName} {m.lastName} (Gen {m.generation})
+                      </option>
+                    ))}
                 </select>
               </div>
             </div>

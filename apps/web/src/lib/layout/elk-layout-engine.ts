@@ -17,71 +17,119 @@ export async function computeTreeLayout(
   parentChildEdges: ParentChild[],
   unions: Union[]
 ): Promise<Map<string, NodePosition>> {
-  const memberMap = new Map(members.map(m => [m.id, m]));
-  
-  // Group spouse pairs from unions
-  const unionMap = new Map<string, string>(); 
-  const pairMap = new Map<string, { partner1: string; partner2: string }>();
-  
+  const memberMap = new Map(members.map((m) => [m.id, m]));
+
+  // Build spouse adjacency graph
+  const spouseGraph = new Map<string, Set<string>>();
   for (const union of unions) {
-    unionMap.set(union.partner1Id, union.id);
-    unionMap.set(union.partner2Id, union.id);
-    pairMap.set(union.id, { partner1: union.partner1Id, partner2: union.partner2Id });
+    if (!spouseGraph.has(union.partner1Id)) spouseGraph.set(union.partner1Id, new Set());
+    if (!spouseGraph.has(union.partner2Id)) spouseGraph.set(union.partner2Id, new Set());
+    spouseGraph.get(union.partner1Id)!.add(union.partner2Id);
+    spouseGraph.get(union.partner2Id)!.add(union.partner1Id);
+  }
+
+  // Find connected spouse clusters (supports 1 husband with multiple wives or standard pairs)
+  const memberToClusterId = new Map<string, string>();
+  const clusters: Array<{ id: string; members: string[] }> = [];
+  const visited = new Set<string>();
+
+  for (const member of members) {
+    if (visited.has(member.id)) continue;
+    const spouses = spouseGraph.get(member.id);
+    if (spouses && spouses.size > 0) {
+      const clusterMembers: string[] = [];
+      const queue = [member.id];
+      visited.add(member.id);
+
+      while (queue.length > 0) {
+        const curr = queue.shift()!;
+        clusterMembers.push(curr);
+        const nextSpouses = spouseGraph.get(curr);
+        if (nextSpouses) {
+          for (const s of nextSpouses) {
+            if (!visited.has(s)) {
+              visited.add(s);
+              queue.push(s);
+            }
+          }
+        }
+      }
+
+      // Sort cluster: male partner (husband) first, then wives
+      clusterMembers.sort((a, b) => {
+        const mA = memberMap.get(a);
+        const mB = memberMap.get(b);
+        if (mA?.gender === 'male' && mB?.gender !== 'male') return -1;
+        if (mB?.gender === 'male' && mA?.gender !== 'male') return 1;
+        return 0;
+      });
+
+      const clusterId = `family_${clusterMembers[0]}`;
+      clusters.push({ id: clusterId, members: clusterMembers });
+      for (const mId of clusterMembers) {
+        memberToClusterId.set(mId, clusterId);
+      }
+    } else {
+      visited.add(member.id);
+    }
   }
 
   const nodes: ElkNode[] = [];
   const processedMembers = new Set<string>();
 
-  // Create nodes
+  // Add multi-spouse/couple compound nodes
+  for (const cluster of clusters) {
+    const children = cluster.members.map((mId, idx) => ({
+      id: mId,
+      width: CARD_WIDTH,
+      height: CARD_HEIGHT,
+      x: idx * (CARD_WIDTH + SPOUSE_GAP),
+      y: 0,
+    }));
+
+    nodes.push({
+      id: cluster.id,
+      layoutOptions: {
+        'elk.algorithm': 'fixed',
+        'elk.padding': '[top=0,left=0,bottom=0,right=0]',
+      },
+      children,
+      width: cluster.members.length * CARD_WIDTH + (cluster.members.length - 1) * SPOUSE_GAP,
+      height: CARD_HEIGHT,
+    });
+
+    for (const mId of cluster.members) {
+      processedMembers.add(mId);
+    }
+  }
+
+  // Add standalone nodes
   for (const member of members) {
     if (processedMembers.has(member.id)) continue;
-
-    const unionId = unionMap.get(member.id);
-    if (unionId && pairMap.has(unionId)) {
-      const pair = pairMap.get(unionId)!;
-      // create compound node
-      nodes.push({
-        id: `pair_${unionId}`,
-        layoutOptions: {
-          'elk.algorithm': 'fixed',
-          'elk.padding': '[top=0,left=0,bottom=0,right=0]',
-        },
-        children: [
-          { id: pair.partner1, width: CARD_WIDTH, height: CARD_HEIGHT, x: 0, y: 0 },
-          { id: pair.partner2, width: CARD_WIDTH, height: CARD_HEIGHT, x: CARD_WIDTH + SPOUSE_GAP, y: 0 }
-        ],
-        width: CARD_WIDTH * 2 + SPOUSE_GAP,
-        height: CARD_HEIGHT,
-      });
-      processedMembers.add(pair.partner1);
-      processedMembers.add(pair.partner2);
-    } else {
-      // Create standalone node
-      nodes.push({
-        id: member.id,
-        width: CARD_WIDTH,
-        height: CARD_HEIGHT
-      });
-      processedMembers.add(member.id);
-    }
+    nodes.push({
+      id: member.id,
+      width: CARD_WIDTH,
+      height: CARD_HEIGHT,
+    });
+    processedMembers.add(member.id);
   }
 
   // Create edges
   const edges = [];
   const processedEdges = new Set<string>();
-  
+
   for (const pc of parentChildEdges) {
-    const parentUnionId = unionMap.get(pc.parentId);
-    const sourceId = parentUnionId ? `pair_${parentUnionId}` : pc.parentId;
-    const targetUnionId = unionMap.get(pc.childId);
-    const targetId = targetUnionId ? `pair_${targetUnionId}` : pc.childId;
-    
+    const parentClusterId = memberToClusterId.get(pc.parentId);
+    const sourceId = parentClusterId || pc.parentId;
+    const childClusterId = memberToClusterId.get(pc.childId);
+    const targetId = childClusterId || pc.childId;
+
     const edgeId = `${sourceId}_${targetId}`;
     if (!processedEdges.has(edgeId)) {
       edges.push({
         id: edgeId,
         sources: [sourceId],
-        targets: [targetId]
+        targets: [targetId],
       });
       processedEdges.add(edgeId);
     }

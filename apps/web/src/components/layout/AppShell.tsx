@@ -43,7 +43,8 @@ export const AppShell: React.FC = () => {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<FamilyMember | null>(null);
   const [editingSpouseId, setEditingSpouseId] = useState<string | null>(null);
-  const [editingParentId, setEditingParentId] = useState<string | null>(null);
+  const [editingFatherId, setEditingFatherId] = useState<string | null>(null);
+  const [editingMotherId, setEditingMotherId] = useState<string | null>(null);
   const [deletingMember, setDeletingMember] = useState<FamilyMember | null>(null);
 
   // Tree data state (starts clean and empty, filled by Supabase or user additions)
@@ -161,7 +162,8 @@ export const AppShell: React.FC = () => {
   const handleAddClick = () => {
     setEditingMember(null);
     setEditingSpouseId(null);
-    setEditingParentId(null);
+    setEditingFatherId(null);
+    setEditingMotherId(null);
     setIsFormOpen(true);
   };
 
@@ -178,9 +180,20 @@ export const AppShell: React.FC = () => {
         : null;
       setEditingSpouseId(spouseId);
 
-      // Determine current parent from parentChildEdges
-      const parentLink = parentChildEdges.find((pc) => pc.childId === memberId);
-      setEditingParentId(parentLink ? parentLink.parentId : null);
+      // Determine current parents from parentChildEdges
+      const parentLinks = parentChildEdges.filter((pc) => pc.childId === memberId);
+      let fatherId: string | null = null;
+      let motherId: string | null = null;
+      parentLinks.forEach((link) => {
+        const parentMember = members.find((m) => m.id === link.parentId);
+        if (parentMember?.gender === 'female') {
+          motherId = link.parentId;
+        } else {
+          fatherId = link.parentId;
+        }
+      });
+      setEditingFatherId(fatherId);
+      setEditingMotherId(motherId);
 
       setIsFormOpen(true);
     }
@@ -194,7 +207,25 @@ export const AppShell: React.FC = () => {
       generation: parent ? parent.generation + 1 : 2,
     };
     setEditingMember(newChildStub as FamilyMember);
-    setEditingParentId(parentId);
+    if (parent?.gender === 'female') {
+      setEditingMotherId(parentId);
+      const motherUnions = unions.filter((u) => u.partner1Id === parentId || u.partner2Id === parentId);
+      if (motherUnions.length === 1) {
+        const u = motherUnions[0];
+        setEditingFatherId(u.partner1Id === parentId ? u.partner2Id : u.partner1Id);
+      } else {
+        setEditingFatherId(null);
+      }
+    } else {
+      setEditingFatherId(parentId);
+      const fatherUnions = unions.filter((u) => u.partner1Id === parentId || u.partner2Id === parentId);
+      if (fatherUnions.length === 1) {
+        const u = fatherUnions[0];
+        setEditingMotherId(u.partner1Id === parentId ? u.partner2Id : u.partner1Id);
+      } else {
+        setEditingMotherId(null);
+      }
+    }
     setEditingSpouseId(null);
     setIsFormOpen(true);
   };
@@ -239,8 +270,9 @@ export const AppShell: React.FC = () => {
 
     // Calculate generation based on parent linkage
     let generation = Number(formData.generation) || 1;
-    if (formData.parentId) {
-      const parent = members.find((m) => m.id === formData.parentId);
+    const parentAnchorId = formData.fatherId || formData.motherId;
+    if (parentAnchorId) {
+      const parent = members.find((m) => m.id === parentAnchorId);
       if (parent) {
         generation = parent.generation + 1;
       }
@@ -275,53 +307,66 @@ export const AppShell: React.FC = () => {
         ? prev.members.map((m) => (m.id === targetId ? memberPayload : m))
         : [...prev.members, memberPayload];
 
-      // 2. Unions (spouse linking)
-      let updatedUnions = prev.unions.filter(
-        (u) => u.partner1Id !== targetId && u.partner2Id !== targetId
-      );
+      // 2. Unions (spouse linking) - preserves multiple wives / polygamy
+      let updatedUnions = [...prev.unions];
       if (formData.spouseId) {
-        updatedUnions = updatedUnions.filter(
-          (u) => u.partner1Id !== formData.spouseId && u.partner2Id !== formData.spouseId
+        const alreadyUnioned = updatedUnions.some(
+          (u) =>
+            (u.partner1Id === targetId && u.partner2Id === formData.spouseId) ||
+            (u.partner1Id === formData.spouseId && u.partner2Id === targetId)
         );
-        updatedUnions.push({
-          id: `u_${Date.now()}`,
-          partner1Id: targetId,
-          partner2Id: formData.spouseId,
-          unionType: 'marriage',
-          unionDate: null,
-          dissolutionDate: null,
-          createdAt: new Date().toISOString(),
-        });
+        if (!alreadyUnioned) {
+          updatedUnions.push({
+            id: `u_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            partner1Id: targetId,
+            partner2Id: formData.spouseId,
+            unionType: 'marriage',
+            unionDate: null,
+            dissolutionDate: null,
+            createdAt: new Date().toISOString(),
+          });
+        }
       }
 
-      // 3. Parent-Child Edges
+      // If father and mother were selected, ensure union exists between father & mother
+      if (formData.fatherId && formData.motherId) {
+        const parentsUnioned = updatedUnions.some(
+          (u) =>
+            (u.partner1Id === formData.fatherId && u.partner2Id === formData.motherId) ||
+            (u.partner1Id === formData.motherId && u.partner2Id === formData.fatherId)
+        );
+        if (!parentsUnioned) {
+          updatedUnions.push({
+            id: `u_${Date.now()}_fm`,
+            partner1Id: formData.fatherId,
+            partner2Id: formData.motherId,
+            unionType: 'marriage',
+            unionDate: null,
+            dissolutionDate: null,
+            createdAt: new Date().toISOString(),
+          });
+        }
+      }
+
+      // 3. Parent-Child Edges: link Father and Mother explicitly
       let updatedEdges = prev.parentChildEdges.filter((pc) => pc.childId !== targetId);
-      if (formData.parentId) {
+      if (formData.fatherId) {
         updatedEdges.push({
-          id: `pc_${Date.now()}_1`,
-          parentId: formData.parentId,
+          id: `pc_${Date.now()}_f`,
+          parentId: formData.fatherId,
           childId: targetId,
           relationshipType: 'biological',
           createdAt: new Date().toISOString(),
         });
-
-        // If selected parent has a spouse, also link co-parent
-        const parentUnion = updatedUnions.find(
-          (u) => u.partner1Id === formData.parentId || u.partner2Id === formData.parentId
-        );
-        if (parentUnion) {
-          const secondParentId =
-            parentUnion.partner1Id === formData.parentId
-              ? parentUnion.partner2Id
-              : parentUnion.partner1Id;
-          updatedEdges.push({
-            id: `pc_${Date.now()}_2`,
-            parentId: secondParentId,
-            childId: targetId,
-            relationshipType: 'biological',
-            createdAt: new Date().toISOString(),
-          });
-        }
+      }
+      if (formData.motherId) {
+        updatedEdges.push({
+          id: `pc_${Date.now()}_m`,
+          parentId: formData.motherId,
+          childId: targetId,
+          relationshipType: 'biological',
+          createdAt: new Date().toISOString(),
+        });
       }
 
       return {
@@ -364,7 +409,8 @@ export const AppShell: React.FC = () => {
         bio: formData.bio || undefined,
         avatarUrl: formData.avatarUrl || undefined,
         spouseId: formData.spouseId || undefined,
-        parentId: formData.parentId || undefined,
+        fatherId: formData.fatherId || undefined,
+        motherId: formData.motherId || undefined,
       })
         .then((newMember) => {
           setTreeState((prev) => ({
@@ -379,7 +425,8 @@ export const AppShell: React.FC = () => {
     setIsFormOpen(false);
     setEditingMember(null);
     setEditingSpouseId(null);
-    setEditingParentId(null);
+    setEditingFatherId(null);
+    setEditingMotherId(null);
   };
 
   // Generation banner Y-offsets
@@ -572,14 +619,16 @@ export const AppShell: React.FC = () => {
           setIsFormOpen(false);
           setEditingMember(null);
           setEditingSpouseId(null);
-          setEditingParentId(null);
+          setEditingFatherId(null);
+          setEditingMotherId(null);
         }}
         onSubmit={handleFormSubmit}
         onDelete={handleDeleteRequest}
         initialData={editingMember}
         allMembers={members}
         initialSpouseId={editingSpouseId}
-        initialParentId={editingParentId}
+        initialFatherId={editingFatherId}
+        initialMotherId={editingMotherId}
       />
 
       <DeleteConfirmDialog

@@ -48,7 +48,7 @@ model FamilyMember {
   profession  String?   @db.VarChar(300)
   residence   String?   @db.VarChar(300)
   bio         String?   @db.Text
-  avatarUrl   String?   @db.VarChar(2048)
+  avatarUrl   String?   @db.Text
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -119,8 +119,8 @@ enum ArtifactType {
 model MediaArtifact {
   id           String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   memberId     String       @db.Uuid
-  url          String       @db.VarChar(2048)
-  thumbnailUrl String?      @db.VarChar(2048)
+  url          String       @db.Text
+  thumbnailUrl String?      @db.Text
   caption      String?      @db.VarChar(500)
   artifactType ArtifactType @default(photo)
   sortOrder    Int          @default(0)

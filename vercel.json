@@ -1,11 +1,15 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "pnpm --filter @kinfolk/web build",
+  "buildCommand": "pnpm --filter @kinfolk/api exec prisma generate && pnpm --filter @kinfolk/web build",
   "outputDirectory": "apps/web/dist",
   "framework": "vite",
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/api/(.*)",
+      "destination": "/api"
+    },
+    {
+      "source": "/((?!api($|/)).*)",
       "destination": "/index.html"
     }
   ]

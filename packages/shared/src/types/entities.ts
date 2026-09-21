@@ -95,7 +95,8 @@ export interface CreateMemberInput {
   bio?: string | null;
   avatarUrl?: string | null;
   spouseId?: string | null;
-  parentId?: string | null;
+  fatherId?: string | null;
+  motherId?: string | null;
 }
 
 /** Input type for updating an existing family member */

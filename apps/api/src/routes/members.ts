@@ -18,7 +18,8 @@ const createMemberSchema = z.object({
   bio: z.string().optional(),
   avatarUrl: z.string().optional(),
   spouseId: z.string().uuid().optional(),
-  parentId: z.string().uuid().optional()
+  fatherId: z.string().uuid().optional(),
+  motherId: z.string().uuid().optional()
 });
 
 const updateMemberSchema = z.object({
@@ -72,7 +73,7 @@ export default async function membersPlugin(server: FastifyInstance) {
       const { treeId } = request.params as { treeId: string };
       const resolvedId = await resolveTreeId(treeId);
       const parsedData = createMemberSchema.parse(request.body);
-      const { spouseId, parentId, ...memberData } = parsedData;
+      const { spouseId, fatherId, motherId, ...memberData } = parsedData;
 
       const member = await prisma.familyMember.create({
         data: {
@@ -90,10 +91,19 @@ export default async function membersPlugin(server: FastifyInstance) {
         });
       }
 
-      if (parentId) {
+      if (fatherId) {
         await prisma.parentChild.create({
           data: {
-            parentId,
+            parentId: fatherId,
+            childId: member.id
+          }
+        });
+      }
+
+      if (motherId) {
+        await prisma.parentChild.create({
+          data: {
+            parentId: motherId,
             childId: member.id
           }
         });
