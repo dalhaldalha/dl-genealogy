@@ -63,17 +63,17 @@ export default async function treesPlugin(server: FastifyInstance) {
         return reply.notFound('Tree not found');
       }
 
-      const members = tree.members.map(m => {
+      const members = tree.members.map((m: any) => {
         const { parentOf, childOf, unionsAsPartner1, unionsAsPartner2, artifacts, ...rest } = m;
         return rest;
       });
 
-      const parentChildEdges = tree.members.flatMap(m => m.parentOf);
-      const unions = tree.members.flatMap(m => m.unionsAsPartner1);
-      const artifacts = tree.members.flatMap(m => m.artifacts);
+      const parentChildEdges = tree.members.flatMap((m: any) => m.parentOf);
+      const unions = tree.members.flatMap((m: any) => m.unionsAsPartner1);
+      const artifacts = tree.members.flatMap((m: any) => m.artifacts);
 
       // deduplicate unions since we fetch from partner1
-      const uniqueUnions = Array.from(new Map(unions.map(u => [u.id, u])).values());
+      const uniqueUnions = Array.from(new Map(unions.map((u: any) => [u.id, u])).values());
 
       return {
         tree: {

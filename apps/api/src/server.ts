@@ -10,7 +10,7 @@ const server: FastifyInstance = fastify({ logger: true });
 
 server.register(cors, {
   origin: process.env.CORS_ORIGIN
-    ? process.env.CORS_ORIGIN.split(',').map(s => s.trim())
+    ? process.env.CORS_ORIGIN.split(',').map((s: string) => s.trim())
     : true,
   credentials: true
 });
