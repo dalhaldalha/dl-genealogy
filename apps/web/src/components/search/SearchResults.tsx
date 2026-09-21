@@ -26,11 +26,17 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, query, on
           onClick={() => onSelect(m.id)}
           className="flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer transition-colors"
         >
-          <img
-            src={m.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=260'}
-            alt={`${m.firstName} ${m.lastName}`}
-            className="w-8 h-8 rounded-lg object-cover ring-1 ring-zinc-200 dark:ring-zinc-700 shrink-0"
-          />
+          {m.avatarUrl ? (
+            <img
+              src={m.avatarUrl}
+              alt={`${m.firstName} ${m.lastName}`}
+              className="w-8 h-8 rounded-lg object-cover ring-1 ring-zinc-200 dark:ring-zinc-700 shrink-0"
+            />
+          ) : (
+            <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-heritage-gold font-serif font-bold text-xs flex items-center justify-center shrink-0 ring-1 ring-amber-500/30 select-none">
+              {m.firstName?.[0]?.toUpperCase() || ''}{m.lastName?.[0]?.toUpperCase() || ''}
+            </div>
+          )}
           <div className="flex-1 min-w-0">
             <div className="font-semibold text-xs text-zinc-800 dark:text-zinc-200 truncate">
               {m.firstName} {m.lastName}

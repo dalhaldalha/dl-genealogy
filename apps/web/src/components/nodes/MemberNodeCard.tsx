@@ -68,13 +68,26 @@ export function MemberNodeCard({
         {/* Header row */}
         <div className="flex items-start gap-3">
           <div className="relative shrink-0">
-            <img
-              src={member.avatarUrl || '/placeholder-avatar.jpg'}
-              alt={member.firstName}
-              className={`w-12 h-12 rounded-xl object-cover ${
-                isDeceased ? 'grayscale ring-2 ring-zinc-400/50' : 'ring-2 ring-heritage-gold/60'
-              }`}
-            />
+            {member.avatarUrl ? (
+              <img
+                src={member.avatarUrl}
+                alt={member.firstName}
+                className={`w-12 h-12 rounded-xl object-cover ${
+                  isDeceased ? 'grayscale ring-2 ring-zinc-400/50' : 'ring-2 ring-heritage-gold/60'
+                }`}
+              />
+            ) : (
+              <div
+                className={`w-12 h-12 rounded-xl flex items-center justify-center font-serif font-bold text-sm select-none ${
+                  isDeceased
+                    ? 'bg-zinc-800 text-zinc-400 ring-2 ring-zinc-600/50'
+                    : 'bg-gradient-to-br from-amber-500/20 to-amber-900/30 text-heritage-gold ring-2 ring-heritage-gold/50'
+                }`}
+              >
+                {member.firstName?.[0]?.toUpperCase() || ''}
+                {member.lastName?.[0]?.toUpperCase() || ''}
+              </div>
+            )}
             <div className="absolute -bottom-1 -right-1">
               <StatusIndicator isDeceased={isDeceased} />
             </div>

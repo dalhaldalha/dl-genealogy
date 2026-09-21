@@ -245,9 +245,7 @@ export const AppShell: React.FC = () => {
       bio: formData.bio?.trim() || null,
       avatarUrl:
         formData.avatarUrl?.trim() ||
-        (isEditing && editingMember?.avatarUrl
-          ? editingMember.avatarUrl
-          : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=260'),
+        (isEditing && editingMember?.avatarUrl ? editingMember.avatarUrl : null),
       createdAt: isEditing && editingMember?.createdAt ? editingMember.createdAt : new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
