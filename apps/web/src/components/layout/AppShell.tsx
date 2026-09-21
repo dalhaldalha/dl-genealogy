@@ -22,7 +22,7 @@ import { useTreeLayout } from '@/hooks/useTreeLayout';
 import { emptyFamilyTree } from '@/data/mockTreeData';
 import { fetchTree } from '@/api/trees';
 import { createMember, updateMember, deleteMember } from '@/api/members';
-import type { FamilyMember } from '@kinfolk/shared';
+import type { FamilyMember, FamilyTreeFull } from '@kinfolk/shared';
 
 const GENERATION_LABELS: Record<number, string> = {
   1: 'Founders (1910 - 1930)',
@@ -47,24 +47,28 @@ export const AppShell: React.FC = () => {
   const [deletingMember, setDeletingMember] = useState<FamilyMember | null>(null);
 
   // Tree data state (starts clean and empty, filled by Supabase or user additions)
-  const [treeState, setTreeState] = useState(emptyFamilyTree);
+  const [treeState, setTreeState] = useState<FamilyTreeFull>(emptyFamilyTree);
 
-  const { data: apiTree, refetch: refetchTree } = useQuery({
+  const { data: apiTree, isLoading: isTreeLoading, refetch: refetchTree } = useQuery({
     queryKey: ['tree', 'active'],
-    queryFn: async () => {
-      try {
-        return await fetchTree('active');
-      } catch {
-        return emptyFamilyTree;
-      }
-    },
-    initialData: emptyFamilyTree,
-    staleTime: 1000 * 60 * 5,
+    queryFn: () => fetchTree('active'),
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   useEffect(() => {
     if (apiTree) {
-      setTreeState(apiTree);
+      setTreeState({
+        id: apiTree.id || (apiTree as any).tree?.id || 'tree_active',
+        name: apiTree.name || (apiTree as any).tree?.name || 'DL-GENEALOGY',
+        subtitle: apiTree.subtitle || (apiTree as any).tree?.subtitle || null,
+        createdAt: apiTree.createdAt || new Date().toISOString(),
+        updatedAt: apiTree.updatedAt || new Date().toISOString(),
+        members: apiTree.members || [],
+        parentChildEdges: apiTree.parentChildEdges || [],
+        unions: apiTree.unions || [],
+        artifacts: apiTree.artifacts || [],
+      });
     }
   }, [apiTree]);
 
@@ -119,6 +123,19 @@ export const AppShell: React.FC = () => {
 
   // Compute graph layout via ELK.js
   const { nodePositions } = useTreeLayout(members, parentChildEdges, unions);
+
+  // Auto-center camera when members first load into layout
+  const [hasInitialCentered, setHasInitialCentered] = useState(false);
+  useEffect(() => {
+    if (!hasInitialCentered && members.length > 0 && nodePositions.size > 0) {
+      const firstMember = members[0];
+      const pos = nodePositions.get(firstMember.id);
+      if (pos) {
+        centerOnNode(pos.x, pos.y, pos.width, pos.height, viewportSize.width, viewportSize.height, 0);
+        setHasInitialCentered(true);
+      }
+    }
+  }, [hasInitialCentered, members, nodePositions, viewportSize, centerOnNode]);
 
   // Focused member object
   const focusedMember = useMemo(() => {
@@ -209,7 +226,9 @@ export const AppShell: React.FC = () => {
     if (focusedMemberId === memberId) {
       closeFocus();
     }
-    deleteMember(memberId).catch((err) => console.warn('API delete failed, updated locally:', err));
+    deleteMember(memberId)
+      .then(() => refetchTree())
+      .catch((err) => console.warn('API delete failed, updated locally:', err));
     setIsDeleteOpen(false);
     setDeletingMember(null);
   };
@@ -327,7 +346,9 @@ export const AppShell: React.FC = () => {
         residence: formData.residence || undefined,
         bio: formData.bio || undefined,
         avatarUrl: formData.avatarUrl || undefined,
-      }).catch((err) => console.warn('API update failed, updated locally:', err));
+      })
+        .then(() => refetchTree())
+        .catch((err) => console.warn('API update failed, updated locally:', err));
     } else {
       createMember('active', {
         firstName: formData.firstName,
@@ -350,6 +371,7 @@ export const AppShell: React.FC = () => {
             ...prev,
             members: prev.members.map((m) => (m.id === targetId ? { ...m, id: newMember.id } : m)),
           }));
+          refetchTree();
         })
         .catch((err) => console.warn('API create failed, created locally:', err));
     }
@@ -419,8 +441,18 @@ export const AppShell: React.FC = () => {
         className="relative flex-1 w-full h-full overflow-hidden canvas-dot-grid cursor-grab active:cursor-grabbing"
         id="canvasContainer"
       >
+        {/* Loading spinner while fetching active tree from backend */}
+        {isTreeLoading && members.length === 0 && (
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center pointer-events-none p-4">
+            <div className="glass-panel p-6 sm:p-8 rounded-2xl max-w-sm w-full text-center border border-zinc-200/60 dark:border-zinc-800/60 shadow-lg pointer-events-auto backdrop-blur-md">
+              <div className="w-8 h-8 mx-auto mb-3 border-2 border-heritage-gold border-t-transparent rounded-full animate-spin" />
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">Loading family lineage...</p>
+            </div>
+          </div>
+        )}
+
         {/* Empty state: Only display the "Create Your Family Tree" call-to-action when in Admin mode */}
-        {members.length === 0 && role === 'admin' && (
+        {!isTreeLoading && members.length === 0 && role === 'admin' && (
           <div className="absolute inset-0 z-20 flex flex-col items-center justify-center pointer-events-none p-4">
             <div className="glass-panel p-6 sm:p-10 rounded-3xl max-w-md w-full text-center border border-amber-500/20 shadow-2xl pointer-events-auto backdrop-blur-xl">
               <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-heritage-gold shadow-inner">
@@ -444,7 +476,7 @@ export const AppShell: React.FC = () => {
         )}
 
         {/* Read-only notice for visitors when tree has no records yet */}
-        {members.length === 0 && role !== 'admin' && (
+        {!isTreeLoading && members.length === 0 && role !== 'admin' && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center pointer-events-none p-4">
             <div className="glass-panel p-6 sm:p-8 rounded-2xl max-w-sm w-full text-center border border-zinc-200/60 dark:border-zinc-800/60 shadow-lg pointer-events-auto backdrop-blur-md">
               <h2 className="font-serif text-lg sm:text-xl font-bold text-zinc-900 dark:text-zinc-100 mb-1">

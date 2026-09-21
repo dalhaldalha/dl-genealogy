@@ -2,7 +2,7 @@ import { FastifyInstance } from 'fastify';
 import prisma from '../db/client';
 
 export default async function searchPlugin(server: FastifyInstance) {
-  server.get('/api/trees/:treeId/search', async (request, reply) => {
+  const searchHandler = async (request: any, reply: any) => {
     try {
       const { treeId } = request.params as { treeId: string };
       const { q } = request.query as { q?: string };
@@ -28,5 +28,8 @@ export default async function searchPlugin(server: FastifyInstance) {
       server.log.error(error);
       return reply.internalServerError();
     }
-  });
+  };
+
+  server.get('/api/trees/:treeId/search', searchHandler);
+  server.get('/trees/:treeId/search', searchHandler);
 }

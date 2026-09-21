@@ -17,7 +17,7 @@ const createUnionSchema = z.object({
 });
 
 export default async function relationshipsPlugin(server: FastifyInstance) {
-  server.post('/api/members/:memberId/parents', async (request, reply) => {
+  const addParentHandler = async (request: any, reply: any) => {
     try {
       const { memberId } = request.params as { memberId: string };
       const data = createParentChildSchema.parse(request.body);
@@ -37,9 +37,9 @@ export default async function relationshipsPlugin(server: FastifyInstance) {
       }
       return reply.internalServerError();
     }
-  });
+  };
 
-  server.delete('/api/members/:memberId/parents/:parentId', async (request, reply) => {
+  const deleteParentHandler = async (request: any, reply: any) => {
     try {
       const { memberId, parentId } = request.params as { memberId: string, parentId: string };
       await prisma.parentChild.delete({
@@ -55,9 +55,9 @@ export default async function relationshipsPlugin(server: FastifyInstance) {
       server.log.error(error);
       return reply.internalServerError();
     }
-  });
+  };
 
-  server.post('/api/unions', async (request, reply) => {
+  const createUnionHandler = async (request: any, reply: any) => {
     try {
       const data = createUnionSchema.parse(request.body);
       const union = await prisma.union.create({
@@ -71,9 +71,9 @@ export default async function relationshipsPlugin(server: FastifyInstance) {
       }
       return reply.internalServerError();
     }
-  });
+  };
 
-  server.delete('/api/unions/:unionId', async (request, reply) => {
+  const deleteUnionHandler = async (request: any, reply: any) => {
     try {
       const { unionId } = request.params as { unionId: string };
       await prisma.union.delete({
@@ -84,5 +84,17 @@ export default async function relationshipsPlugin(server: FastifyInstance) {
       server.log.error(error);
       return reply.internalServerError();
     }
-  });
+  };
+
+  server.post('/api/members/:memberId/parents', addParentHandler);
+  server.post('/members/:memberId/parents', addParentHandler);
+
+  server.delete('/api/members/:memberId/parents/:parentId', deleteParentHandler);
+  server.delete('/members/:memberId/parents/:parentId', deleteParentHandler);
+
+  server.post('/api/unions', createUnionHandler);
+  server.post('/unions', createUnionHandler);
+
+  server.delete('/api/unions/:unionId', deleteUnionHandler);
+  server.delete('/unions/:unionId', deleteUnionHandler);
 }

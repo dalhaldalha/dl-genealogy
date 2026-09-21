@@ -48,7 +48,7 @@ async function resolveTreeId(treeId: string): Promise<string> {
 }
 
 export default async function membersPlugin(server: FastifyInstance) {
-  server.get('/api/trees/:treeId/members', async (request, reply) => {
+  const getMembersHandler = async (request: any, reply: any) => {
     try {
       const { treeId } = request.params as { treeId: string };
       const { branch } = request.query as { branch?: string };
@@ -65,9 +65,9 @@ export default async function membersPlugin(server: FastifyInstance) {
       server.log.error(error);
       return reply.internalServerError();
     }
-  });
+  };
 
-  server.post('/api/trees/:treeId/members', async (request, reply) => {
+  const createMemberHandler = async (request: any, reply: any) => {
     try {
       const { treeId } = request.params as { treeId: string };
       const resolvedId = await resolveTreeId(treeId);
@@ -107,9 +107,9 @@ export default async function membersPlugin(server: FastifyInstance) {
       }
       return reply.internalServerError();
     }
-  });
+  };
 
-  server.patch('/api/members/:memberId', async (request, reply) => {
+  const updateMemberHandler = async (request: any, reply: any) => {
     try {
       const { memberId } = request.params as { memberId: string };
       const parsedData = updateMemberSchema.parse(request.body);
@@ -127,9 +127,9 @@ export default async function membersPlugin(server: FastifyInstance) {
       }
       return reply.internalServerError();
     }
-  });
+  };
 
-  server.delete('/api/members/:memberId', async (request, reply) => {
+  const deleteMemberHandler = async (request: any, reply: any) => {
     try {
       const { memberId } = request.params as { memberId: string };
       await prisma.familyMember.delete({
@@ -140,5 +140,19 @@ export default async function membersPlugin(server: FastifyInstance) {
       server.log.error(error);
       return reply.internalServerError();
     }
-  });
+  };
+
+  server.get('/api/trees/:treeId/members', getMembersHandler);
+  server.get('/trees/:treeId/members', getMembersHandler);
+
+  server.post('/api/trees/:treeId/members', createMemberHandler);
+  server.post('/trees/:treeId/members', createMemberHandler);
+
+  server.patch('/api/members/:memberId', updateMemberHandler);
+  server.patch('/members/:memberId', updateMemberHandler);
+  server.put('/api/members/:memberId', updateMemberHandler);
+  server.put('/members/:memberId', updateMemberHandler);
+
+  server.delete('/api/members/:memberId', deleteMemberHandler);
+  server.delete('/members/:memberId', deleteMemberHandler);
 }

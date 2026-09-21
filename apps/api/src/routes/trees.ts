@@ -2,7 +2,7 @@ import { FastifyInstance } from 'fastify';
 import prisma from '../db/client';
 
 export default async function treesPlugin(server: FastifyInstance) {
-  server.get('/api/trees/:treeId', async (request, reply) => {
+  const getTreeHandler = async (request: any, reply: any) => {
     try {
       const { treeId } = request.params as { treeId: string };
       
@@ -76,6 +76,11 @@ export default async function treesPlugin(server: FastifyInstance) {
       const uniqueUnions = Array.from(new Map(unions.map((u: any) => [u.id, u])).values());
 
       return {
+        id: tree.id,
+        name: tree.name,
+        subtitle: tree.subtitle,
+        createdAt: tree.createdAt,
+        updatedAt: tree.updatedAt,
         tree: {
           id: tree.id,
           name: tree.name,
@@ -92,5 +97,8 @@ export default async function treesPlugin(server: FastifyInstance) {
       server.log.error(error);
       return reply.internalServerError();
     }
-  });
+  };
+
+  server.get('/api/trees/:treeId', getTreeHandler);
+  server.get('/trees/:treeId', getTreeHandler);
 }

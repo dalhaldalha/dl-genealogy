@@ -10,12 +10,17 @@ const server: FastifyInstance = fastify({ logger: true });
 
 server.register(cors, {
   origin: process.env.CORS_ORIGIN
-    ? process.env.CORS_ORIGIN.split(',').map((s: string) => s.trim())
+    ? (process.env.CORS_ORIGIN === '*' ? true : process.env.CORS_ORIGIN.split(',').map((s: string) => s.trim()))
     : true,
   credentials: true
 });
 
 server.register(sensible);
+
+// Health check endpoints for Render and monitoring
+server.get('/', async () => ({ status: 'ok', service: 'kinfolk-api' }));
+server.get('/health', async () => ({ status: 'ok', service: 'kinfolk-api' }));
+server.get('/api/health', async () => ({ status: 'ok', service: 'kinfolk-api' }));
 
 server.register(treesPlugin);
 server.register(membersPlugin);
