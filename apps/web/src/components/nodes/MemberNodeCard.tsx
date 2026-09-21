@@ -1,6 +1,6 @@
 import React from 'react';
 import { FamilyMember, NodePosition } from '@kinfolk/shared';
-import { MapPin, ChevronRight, Edit2, Plus } from 'lucide-react';
+import { MapPin, ChevronRight, Edit2, Plus, User } from 'lucide-react';
 import { calculateAge } from '@/lib/age/calculate-age';
 import { StatusIndicator } from './StatusIndicator';
 import { AgePill } from './AgePill';
@@ -78,14 +78,13 @@ export function MemberNodeCard({
               />
             ) : (
               <div
-                className={`w-12 h-12 rounded-xl flex items-center justify-center font-serif font-bold text-sm select-none ${
+                className={`w-12 h-12 rounded-xl flex items-center justify-center select-none ${
                   isDeceased
-                    ? 'bg-zinc-800 text-zinc-400 ring-2 ring-zinc-600/50'
-                    : 'bg-gradient-to-br from-amber-500/20 to-amber-900/30 text-heritage-gold ring-2 ring-heritage-gold/50'
+                    ? 'bg-zinc-800/90 text-zinc-400 ring-2 ring-zinc-600/50'
+                    : 'bg-zinc-900/90 text-heritage-gold ring-2 ring-heritage-gold/50 shadow-inner'
                 }`}
               >
-                {member.firstName?.[0]?.toUpperCase() || ''}
-                {member.lastName?.[0]?.toUpperCase() || ''}
+                <User className="w-6 h-6 opacity-80" />
               </div>
             )}
             <div className="absolute -bottom-1 -right-1">

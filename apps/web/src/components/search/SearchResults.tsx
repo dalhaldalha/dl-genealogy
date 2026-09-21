@@ -1,4 +1,5 @@
 import React from 'react';
+import { User } from 'lucide-react';
 import type { FamilyMember } from '@kinfolk/shared';
 
 interface SearchResultsProps {
@@ -33,8 +34,8 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, query, on
               className="w-8 h-8 rounded-lg object-cover ring-1 ring-zinc-200 dark:ring-zinc-700 shrink-0"
             />
           ) : (
-            <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-heritage-gold font-serif font-bold text-xs flex items-center justify-center shrink-0 ring-1 ring-amber-500/30 select-none">
-              {m.firstName?.[0]?.toUpperCase() || ''}{m.lastName?.[0]?.toUpperCase() || ''}
+            <div className="w-8 h-8 rounded-lg bg-zinc-800 text-heritage-gold flex items-center justify-center shrink-0 ring-1 ring-zinc-700/80 select-none">
+              <User className="w-4 h-4 opacity-80" />
             </div>
           )}
           <div className="flex-1 min-w-0">

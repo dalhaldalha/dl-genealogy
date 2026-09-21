@@ -1,6 +1,6 @@
 import React from 'react';
 import { FamilyMember } from '@kinfolk/shared';
-import { MapPin, Briefcase } from 'lucide-react';
+import { MapPin, Briefcase, User } from 'lucide-react';
 
 export interface ProfileHeroProps {
   member: FamilyMember;
@@ -12,7 +12,7 @@ export function ProfileHero({ member }: ProfileHeroProps) {
   return (
     <div className="flex flex-col items-center text-center">
       <div className="relative mb-5">
-        <div className="w-24 h-24 rounded-2xl overflow-hidden ring-4 ring-zinc-800 shadow-xl bg-zinc-800 flex items-center justify-center">
+        <div className="w-24 h-24 rounded-2xl overflow-hidden ring-4 ring-zinc-800 shadow-xl bg-zinc-800/90 flex items-center justify-center">
           {member.avatarUrl ? (
             <img
               src={member.avatarUrl}
@@ -20,13 +20,12 @@ export function ProfileHero({ member }: ProfileHeroProps) {
               className={`w-full h-full object-cover ${isDeceased ? 'grayscale' : ''}`}
             />
           ) : (
-            <div className={`w-full h-full flex items-center justify-center font-serif font-bold text-2xl select-none ${
+            <div className={`w-full h-full flex items-center justify-center select-none ${
               isDeceased
                 ? 'bg-zinc-800 text-zinc-400'
-                : 'bg-gradient-to-br from-amber-500/20 to-amber-900/40 text-heritage-gold'
+                : 'bg-zinc-900 text-heritage-gold'
             }`}>
-              {member.firstName?.[0]?.toUpperCase() || ''}
-              {member.lastName?.[0]?.toUpperCase() || ''}
+              <User className="w-12 h-12 opacity-80" />
             </div>
           )}
         </div>
