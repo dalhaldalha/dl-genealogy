@@ -419,8 +419,8 @@ export const AppShell: React.FC = () => {
         className="relative flex-1 w-full h-full overflow-hidden canvas-dot-grid cursor-grab active:cursor-grabbing"
         id="canvasContainer"
       >
-        {/* Empty state overlay when starting from scratch */}
-        {members.length === 0 && (
+        {/* Empty state: Only display the "Create Your Family Tree" call-to-action when in Admin mode */}
+        {members.length === 0 && role === 'admin' && (
           <div className="absolute inset-0 z-20 flex flex-col items-center justify-center pointer-events-none p-4">
             <div className="glass-panel p-6 sm:p-10 rounded-3xl max-w-md w-full text-center border border-amber-500/20 shadow-2xl pointer-events-auto backdrop-blur-xl">
               <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-heritage-gold shadow-inner">
@@ -433,15 +433,26 @@ export const AppShell: React.FC = () => {
                 Your family archive is currently empty and ready. Start charting your heritage from scratch by adding the first family member.
               </p>
               <button
-                onClick={() => {
-                  setRole('admin');
-                  handleAddClick();
-                }}
+                onClick={handleAddClick}
                 className="w-full py-3 px-6 rounded-xl bg-gradient-to-r from-heritage-gold to-amber-600 hover:from-amber-600 hover:to-heritage-gold text-zinc-950 font-semibold shadow-lg hover:shadow-amber-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-sm cursor-pointer"
               >
                 <UserPlus className="w-4 h-4" />
                 Add First Family Member
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Read-only notice for visitors when tree has no records yet */}
+        {members.length === 0 && role !== 'admin' && (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center pointer-events-none p-4">
+            <div className="glass-panel p-6 sm:p-8 rounded-2xl max-w-sm w-full text-center border border-zinc-200/60 dark:border-zinc-800/60 shadow-lg pointer-events-auto backdrop-blur-md">
+              <h2 className="font-serif text-lg sm:text-xl font-bold text-zinc-900 dark:text-zinc-100 mb-1">
+                Family Archive
+              </h2>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                This lineage archive is currently being updated.
+              </p>
             </div>
           </div>
         )}
