@@ -285,7 +285,7 @@ export const AppShell: React.FC = () => {
       firstName: formData.firstName.trim(),
       lastName: formData.lastName.trim(),
       maidenName: formData.maidenName?.trim() || null,
-      gender: formData.gender || 'unknown',
+      gender: formData.gender || 'male',
       dateOfBirth: formData.dateOfBirth,
       dateOfDeath: formData.isDeceased && formData.dateOfDeath ? formData.dateOfDeath : null,
       isDeceased: Boolean(formData.isDeceased),

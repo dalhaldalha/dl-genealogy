@@ -1,4 +1,4 @@
-export type Gender = 'male' | 'female' | 'other' | 'unknown';
+export type Gender = 'male' | 'female';
 export type Branch = 'paternal' | 'maternal';
 export type RelationshipType = 'biological' | 'adoptive' | 'step';
 export type UnionType = 'marriage' | 'partnership' | 'divorced';

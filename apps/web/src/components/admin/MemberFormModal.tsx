@@ -48,7 +48,7 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
       lastName: '',
       maidenName: '',
       branch: 'paternal' as 'paternal' | 'maternal',
-      gender: 'unknown' as 'male' | 'female' | 'other' | 'unknown',
+      gender: 'male' as 'male' | 'female',
       dateOfBirth: '',
       isDeceased: false,
       dateOfDeath: '',
@@ -71,7 +71,7 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
           lastName: initialData.lastName || '',
           maidenName: initialData.maidenName || '',
           branch: (initialData.branch as 'paternal' | 'maternal') || 'paternal',
-          gender: initialData.gender || 'unknown',
+          gender: initialData.gender === 'female' ? 'female' : 'male',
           dateOfBirth: initialData.dateOfBirth ? initialData.dateOfBirth.split('T')[0] : '',
           isDeceased: Boolean(initialData.isDeceased),
           dateOfDeath: initialData.dateOfDeath ? initialData.dateOfDeath.split('T')[0] : '',
@@ -89,7 +89,7 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
           lastName: '',
           maidenName: '',
           branch: 'paternal',
-          gender: 'unknown',
+          gender: 'male',
           dateOfBirth: '',
           isDeceased: false,
           dateOfDeath: '',
@@ -427,10 +427,8 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
                   {...register('gender')}
                   className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200"
                 >
-                  <option value="unknown">Not Specified</option>
                   <option value="male">Male</option>
                   <option value="female">Female</option>
-                  <option value="other">Other</option>
                 </select>
               </div>
               <div>
@@ -459,7 +457,7 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
                 >
                   <option value="">No Father Linked</option>
                   {eligibleMembers
-                    .filter((m) => m.gender === 'male' || m.gender === 'unknown')
+                    .filter((m) => m.gender === 'male' || (m.gender as string) !== 'female')
                     .map((m) => (
                       <option key={m.id} value={m.id}>
                         {m.firstName} {m.lastName} (Gen {m.generation})
@@ -475,7 +473,7 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
                 >
                   <option value="">No Mother Linked</option>
                   {eligibleMembers
-                    .filter((m) => m.gender === 'female' || m.gender === 'unknown')
+                    .filter((m) => m.gender === 'female')
                     .map((m) => (
                       <option key={m.id} value={m.id}>
                         {m.firstName} {m.lastName} (Gen {m.generation})

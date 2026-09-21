@@ -5,7 +5,7 @@ const memberBaseSchema = z.object({
   lastName: z.string().min(1, 'Last name is required'),
   dateOfBirth: z.string().min(1, 'Date of birth is required'),
   maidenName: z.string().nullable().optional().or(z.literal('')),
-  gender: z.enum(['male', 'female', 'other', 'unknown']).optional(),
+  gender: z.enum(['male', 'female']).default('male'),
   branch: z.enum(['paternal', 'maternal']).optional(),
   isDeceased: z.boolean().default(false).optional(),
   dateOfDeath: z.string().nullable().optional().or(z.literal('')),
