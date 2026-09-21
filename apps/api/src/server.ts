@@ -27,6 +27,9 @@ server.register(membersPlugin);
 server.register(relationshipsPlugin);
 server.register(searchPlugin);
 
+export default server;
+export { server };
+
 const start = async () => {
   try {
     const port = parseInt(process.env.PORT || '3001', 10);
@@ -45,4 +48,7 @@ process.on('SIGINT', async () => {
   process.exit(0);
 });
 
-start();
+// Run standalone server in local/standard environments, but not when imported by Vercel Serverless Functions
+if (!process.env.VERCEL && process.env.NODE_ENV !== 'test') {
+  start();
+}
