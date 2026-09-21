@@ -303,3 +303,15 @@ export const mockFamilyTree: FamilyTreeFull = {
   unions: mockUnions,
   artifacts: [],
 };
+
+export const emptyFamilyTree: FamilyTreeFull = {
+  id: 'tree_empty',
+  name: 'My Family Tree',
+  subtitle: 'Our Family Lineage',
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+  members: [],
+  parentChildEdges: [],
+  unions: [],
+  artifacts: [],
+};

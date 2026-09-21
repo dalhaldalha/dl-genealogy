@@ -13,13 +13,15 @@ import { AdminFab } from '../admin/AdminFab';
 import { MemberFormModal } from '../admin/MemberFormModal';
 import { DeleteConfirmDialog } from '../admin/DeleteConfirmDialog';
 import { AdminLoginModal } from '../auth/AdminLoginModal';
+import { UserPlus } from 'lucide-react';
 import { useCanvasStore } from '@/stores/canvas-store';
 import { useTreeStore } from '@/stores/tree-store';
 import { useSpotlightStore } from '@/stores/spotlight-store';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTreeLayout } from '@/hooks/useTreeLayout';
-import { mockFamilyTree } from '@/data/mockTreeData';
+import { emptyFamilyTree } from '@/data/mockTreeData';
 import { fetchTree } from '@/api/trees';
+import { createMember, updateMember, deleteMember } from '@/api/members';
 import type { FamilyMember } from '@kinfolk/shared';
 
 const GENERATION_LABELS: Record<number, string> = {
@@ -44,24 +46,24 @@ export const AppShell: React.FC = () => {
   const [editingParentId, setEditingParentId] = useState<string | null>(null);
   const [deletingMember, setDeletingMember] = useState<FamilyMember | null>(null);
 
-  // Tree data state (initialized with prototype-perfect mock, enriched by API if available)
-  const [treeState, setTreeState] = useState(mockFamilyTree);
+  // Tree data state (starts clean and empty, filled by Supabase or user additions)
+  const [treeState, setTreeState] = useState(emptyFamilyTree);
 
-  const { data: apiTree } = useQuery({
+  const { data: apiTree, refetch: refetchTree } = useQuery({
     queryKey: ['tree', 'active'],
     queryFn: async () => {
       try {
         return await fetchTree('active');
       } catch {
-        return mockFamilyTree;
+        return emptyFamilyTree;
       }
     },
-    initialData: mockFamilyTree,
+    initialData: emptyFamilyTree,
     staleTime: 1000 * 60 * 5,
   });
 
   useEffect(() => {
-    if (apiTree && apiTree.members.length > 0) {
+    if (apiTree) {
       setTreeState(apiTree);
     }
   }, [apiTree]);
@@ -207,6 +209,7 @@ export const AppShell: React.FC = () => {
     if (focusedMemberId === memberId) {
       closeFocus();
     }
+    deleteMember(memberId).catch((err) => console.warn('API delete failed, updated locally:', err));
     setIsDeleteOpen(false);
     setDeletingMember(null);
   };
@@ -312,6 +315,47 @@ export const AppShell: React.FC = () => {
       };
     });
 
+    if (isEditing) {
+      updateMember(targetId, {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        maidenName: formData.maidenName || undefined,
+        gender: formData.gender,
+        dateOfBirth: formData.dateOfBirth,
+        dateOfDeath: formData.isDeceased && formData.dateOfDeath ? formData.dateOfDeath : undefined,
+        isDeceased: Boolean(formData.isDeceased),
+        branch: formData.branch,
+        profession: formData.profession || undefined,
+        residence: formData.residence || undefined,
+        bio: formData.bio || undefined,
+        avatarUrl: formData.avatarUrl || undefined,
+      }).catch((err) => console.warn('API update failed, updated locally:', err));
+    } else {
+      createMember('active', {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        maidenName: formData.maidenName || undefined,
+        gender: formData.gender,
+        dateOfBirth: formData.dateOfBirth,
+        dateOfDeath: formData.isDeceased && formData.dateOfDeath ? formData.dateOfDeath : undefined,
+        isDeceased: Boolean(formData.isDeceased),
+        branch: formData.branch,
+        profession: formData.profession || undefined,
+        residence: formData.residence || undefined,
+        bio: formData.bio || undefined,
+        avatarUrl: formData.avatarUrl || undefined,
+        spouseId: formData.spouseId || undefined,
+        parentId: formData.parentId || undefined,
+      })
+        .then((newMember) => {
+          setTreeState((prev) => ({
+            ...prev,
+            members: prev.members.map((m) => (m.id === targetId ? { ...m, id: newMember.id } : m)),
+          }));
+        })
+        .catch((err) => console.warn('API create failed, created locally:', err));
+    }
+
     setIsFormOpen(false);
     setEditingMember(null);
     setEditingSpouseId(null);
@@ -377,6 +421,33 @@ export const AppShell: React.FC = () => {
         className="relative flex-1 w-full h-full overflow-hidden canvas-dot-grid cursor-grab active:cursor-grabbing"
         id="canvasContainer"
       >
+        {/* Empty state overlay when starting from scratch */}
+        {members.length === 0 && (
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center pointer-events-none p-4">
+            <div className="glass-panel p-6 sm:p-10 rounded-3xl max-w-md w-full text-center border border-amber-500/20 shadow-2xl pointer-events-auto backdrop-blur-xl">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-heritage-gold shadow-inner">
+                <UserPlus className="w-7 h-7 sm:w-8 sm:h-8" />
+              </div>
+              <h2 className="font-serif text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-zinc-50 mb-2">
+                Create Your Family Tree
+              </h2>
+              <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 mb-6 leading-relaxed">
+                Your family archive is currently empty and ready. Start charting your heritage from scratch by adding the first family member.
+              </p>
+              <button
+                onClick={() => {
+                  setRole('admin');
+                  handleAddClick();
+                }}
+                className="w-full py-3 px-6 rounded-xl bg-gradient-to-r from-heritage-gold to-amber-600 hover:from-amber-600 hover:to-heritage-gold text-zinc-950 font-semibold shadow-lg hover:shadow-amber-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-sm cursor-pointer"
+              >
+                <UserPlus className="w-4 h-4" />
+                Add First Family Member
+              </button>
+            </div>
+          </div>
+        )}
+
         <CanvasContainer>
           {/* SVG Connections Layer */}
           <SvgEdgeLayer

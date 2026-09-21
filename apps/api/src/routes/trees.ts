@@ -6,20 +6,58 @@ export default async function treesPlugin(server: FastifyInstance) {
     try {
       const { treeId } = request.params as { treeId: string };
       
-      const tree = await prisma.familyTree.findUnique({
-        where: { id: treeId },
-        include: {
-          members: {
-            include: {
-              parentOf: true,
-              childOf: true,
-              unionsAsPartner1: true,
-              unionsAsPartner2: true,
-              artifacts: true
+      let tree;
+      if (treeId === 'active') {
+        tree = await prisma.familyTree.findFirst({
+          orderBy: { createdAt: 'desc' },
+          include: {
+            members: {
+              include: {
+                parentOf: true,
+                childOf: true,
+                unionsAsPartner1: true,
+                unionsAsPartner2: true,
+                artifacts: true
+              }
             }
           }
+        });
+
+        if (!tree) {
+          tree = await prisma.familyTree.create({
+            data: {
+              name: 'My Family Tree',
+              subtitle: 'Our Family Lineage'
+            },
+            include: {
+              members: {
+                include: {
+                  parentOf: true,
+                  childOf: true,
+                  unionsAsPartner1: true,
+                  unionsAsPartner2: true,
+                  artifacts: true
+                }
+              }
+            }
+          });
         }
-      });
+      } else {
+        tree = await prisma.familyTree.findUnique({
+          where: { id: treeId },
+          include: {
+            members: {
+              include: {
+                parentOf: true,
+                childOf: true,
+                unionsAsPartner1: true,
+                unionsAsPartner2: true,
+                artifacts: true
+              }
+            }
+          }
+        });
+      }
 
       if (!tree) {
         return reply.notFound('Tree not found');

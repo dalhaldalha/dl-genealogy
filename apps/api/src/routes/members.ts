@@ -17,7 +17,8 @@ const createMemberSchema = z.object({
   residence: z.string().optional(),
   bio: z.string().optional(),
   avatarUrl: z.string().optional(),
-  spouseId: z.string().uuid().optional()
+  spouseId: z.string().uuid().optional(),
+  parentId: z.string().uuid().optional()
 });
 
 const updateMemberSchema = z.object({
@@ -36,15 +37,26 @@ const updateMemberSchema = z.object({
   avatarUrl: z.string().optional()
 });
 
+async function resolveTreeId(treeId: string): Promise<string> {
+  if (treeId !== 'active') return treeId;
+  const activeTree = await prisma.familyTree.findFirst({ orderBy: { createdAt: 'desc' } });
+  if (activeTree) return activeTree.id;
+  const newTree = await prisma.familyTree.create({
+    data: { name: 'My Family Tree', subtitle: 'Our Family Lineage' }
+  });
+  return newTree.id;
+}
+
 export default async function membersPlugin(server: FastifyInstance) {
   server.get('/api/trees/:treeId/members', async (request, reply) => {
     try {
       const { treeId } = request.params as { treeId: string };
       const { branch } = request.query as { branch?: string };
+      const resolvedId = await resolveTreeId(treeId);
 
       const members = await prisma.familyMember.findMany({
         where: {
-          treeId,
+          treeId: resolvedId,
           branch: branch ? (branch as Branch) : undefined
         }
       });
@@ -58,13 +70,14 @@ export default async function membersPlugin(server: FastifyInstance) {
   server.post('/api/trees/:treeId/members', async (request, reply) => {
     try {
       const { treeId } = request.params as { treeId: string };
+      const resolvedId = await resolveTreeId(treeId);
       const parsedData = createMemberSchema.parse(request.body);
-      const { spouseId, ...memberData } = parsedData;
+      const { spouseId, parentId, ...memberData } = parsedData;
 
       const member = await prisma.familyMember.create({
         data: {
           ...memberData,
-          treeId
+          treeId: resolvedId
         }
       });
 
@@ -73,6 +86,15 @@ export default async function membersPlugin(server: FastifyInstance) {
           data: {
             partner1Id: spouseId,
             partner2Id: member.id
+          }
+        });
+      }
+
+      if (parentId) {
+        await prisma.parentChild.create({
+          data: {
+            parentId,
+            childId: member.id
           }
         });
       }

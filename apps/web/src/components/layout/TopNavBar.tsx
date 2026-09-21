@@ -146,24 +146,22 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
               <span className="text-[11px] sm:text-xs">Viewer</span>
             </button>
             
-            {(isAdminToggleVisible || role === 'admin') && (
-              <button
-                className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg font-medium transition-all animate-fadeIn ${
-                  role === 'admin'
-                    ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-sm'
-                    : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
-                }`}
-                onClick={() => {
-                  if (role !== 'admin') {
-                    setIsAdminModalOpen(true);
-                  }
-                }}
-                title="Admin Mode"
-              >
-                <Shield className="w-3.5 h-3.5 text-heritage-gold" />
-                <span className="text-[11px] sm:text-xs">Admin</span>
-              </button>
-            )}
+            <button
+              className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg font-medium transition-all ${
+                role === 'admin'
+                  ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-sm'
+                  : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
+              }`}
+              onClick={() => {
+                if (role !== 'admin') {
+                  setIsAdminModalOpen(true);
+                }
+              }}
+              title="Admin Mode"
+            >
+              <Shield className="w-3.5 h-3.5 text-heritage-gold" />
+              <span className="text-[11px] sm:text-xs">Admin</span>
+            </button>
           </div>
 
           {/* User Profile Avatar (Desktop/Tablet) */}
