@@ -143,7 +143,9 @@ export function computeDynamicGenerations(
   // All initial roots start at Generation 1
   roots.forEach((r) => generations.set(r, 1));
 
-  // BFS propagation down the parent-child graph
+  // BFS propagation down the parent-child graph with cycle guard
+  const MAX_GEN = 30;
+  const visitCounts = new Map<string, number>();
   const queue = [...roots];
   while (queue.length > 0) {
     const current = queue.shift()!;
@@ -152,10 +154,20 @@ export function computeDynamicGenerations(
     const children = childrenMap.get(current) || [];
     for (const child of children) {
       const childGen = generations.get(child) || 0;
-      if (currentGen + 1 > childGen) {
+      const count = (visitCounts.get(child) || 0) + 1;
+      visitCounts.set(child, count);
+
+      if (count <= 10 && currentGen + 1 > childGen && currentGen + 1 <= MAX_GEN) {
         generations.set(child, currentGen + 1);
         queue.push(child);
       }
+    }
+  }
+
+  // Fallback for any members not reached (e.g. isolated cycles or disconnected nodes)
+  for (const m of members) {
+    if (!generations.has(m.id)) {
+      generations.set(m.id, m.generation && m.generation >= 1 ? m.generation : 1);
     }
   }
 
@@ -176,13 +188,25 @@ export function computeDynamicGenerations(
             generations.set(m.id, spouseGen);
             changed = true;
 
-            // Propagate down to children of m
-            const children = childrenMap.get(m.id) || [];
-            for (const child of children) {
-              const childGen = generations.get(child) || 0;
-              if (spouseGen + 1 > childGen) {
-                generations.set(child, spouseGen + 1);
-                queue.push(child);
+            // Propagate down to all descendants of m
+            const descQueue = [...(childrenMap.get(m.id) || [])];
+            const descVisits = new Map<string, number>();
+            while (descQueue.length > 0) {
+              const c = descQueue.shift()!;
+              const cParents = parentMap.get(c) || [];
+              const maxParentGen = Math.max(
+                ...cParents.map((pid) => generations.get(pid) || 1)
+              );
+              const targetGen = maxParentGen + 1;
+              const currentCGen = generations.get(c) || 1;
+              if (targetGen > currentCGen && targetGen <= MAX_GEN) {
+                generations.set(c, targetGen);
+                const cCount = (descVisits.get(c) || 0) + 1;
+                descVisits.set(c, cCount);
+                if (cCount <= 5) {
+                  const grandchildren = childrenMap.get(c) || [];
+                  descQueue.push(...grandchildren);
+                }
               }
             }
           }
@@ -192,6 +216,36 @@ export function computeDynamicGenerations(
   }
 
   return generations;
+}
+
+/**
+ * Computes all descendants (children, grandchildren, etc.) of a member
+ * to prevent selecting descendants as parents (which would cause ancestral cycles).
+ */
+export function getDescendantIds(memberId: string, parentChildEdges: ParentChild[]): Set<string> {
+  const descendants = new Set<string>();
+  const childrenMap = new Map<string, string[]>();
+
+  parentChildEdges.forEach((edge) => {
+    if (!childrenMap.has(edge.parentId)) childrenMap.set(edge.parentId, []);
+    childrenMap.get(edge.parentId)!.push(edge.childId);
+  });
+
+  const queue = [...(childrenMap.get(memberId) || [])];
+  while (queue.length > 0) {
+    const curr = queue.shift()!;
+    if (!descendants.has(curr)) {
+      descendants.add(curr);
+      const kids = childrenMap.get(curr) || [];
+      for (const k of kids) {
+        if (!descendants.has(k)) {
+          queue.push(k);
+        }
+      }
+    }
+  }
+
+  return descendants;
 }
 
 /**

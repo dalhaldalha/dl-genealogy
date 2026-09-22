@@ -2,9 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createMemberSchema } from '@kinfolk/shared';
-import type { FamilyMember } from '@kinfolk/shared';
+import type { FamilyMember, ParentChild } from '@kinfolk/shared';
 import { X, UserCog, Upload, Trash2, RefreshCw } from 'lucide-react';
 import { processImageFile } from '@/lib/images/process-image';
+import { getDescendantIds } from '@/lib/layout/generation-assigner';
 
 interface MemberFormModalProps {
   isOpen: boolean;
@@ -13,6 +14,7 @@ interface MemberFormModalProps {
   onDelete?: (id: string) => void;
   initialData: FamilyMember | null;
   allMembers: FamilyMember[];
+  parentChildEdges?: ParentChild[];
   initialSpouseId?: string | null;
   initialFatherId?: string | null;
   initialMotherId?: string | null;
@@ -25,6 +27,7 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
   onDelete,
   initialData,
   allMembers,
+  parentChildEdges = [],
   initialSpouseId,
   initialFatherId,
   initialMotherId,
@@ -167,8 +170,13 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
 
   if (!isOpen) return null;
 
-  // Filter out the currently edited member from relational options
+  // Filter out the currently edited member and all their descendants from parent options to prevent ancestral cycles
+  const descendantIds = initialData?.id && parentChildEdges.length > 0
+    ? getDescendantIds(initialData.id, parentChildEdges)
+    : new Set<string>();
+
   const eligibleMembers = allMembers.filter((m) => !initialData?.id || m.id !== initialData.id);
+  const eligibleParents = eligibleMembers.filter((m) => !descendantIds.has(m.id));
 
   return (
     <div className="fixed inset-0 z-50 bg-zinc-950/60 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
@@ -456,7 +464,7 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
                   className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200"
                 >
                   <option value="">No Father Linked</option>
-                  {eligibleMembers
+                  {eligibleParents
                     .filter((m) => m.gender === 'male' || (m.gender as string) !== 'female')
                     .map((m) => (
                       <option key={m.id} value={m.id}>
@@ -472,7 +480,7 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
                   className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200"
                 >
                   <option value="">No Mother Linked</option>
-                  {eligibleMembers
+                  {eligibleParents
                     .filter((m) => m.gender === 'female')
                     .map((m) => (
                       <option key={m.id} value={m.id}>

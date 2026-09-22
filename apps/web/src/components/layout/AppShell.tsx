@@ -28,6 +28,33 @@ import {
   getDynamicGenerationLabel,
 } from '@/lib/layout/generation-assigner';
 
+const STORAGE_KEY = 'dl_genealogy_tree_cache';
+
+function loadCachedTree(): FamilyTreeFull | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && Array.isArray(parsed.members) && parsed.members.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to load tree from cache:', e);
+  }
+  return null;
+}
+
+function saveCachedTree(tree: FamilyTreeFull) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(tree));
+  } catch (e) {
+    console.warn('Failed to save tree to cache:', e);
+  }
+}
+
 export const AppShell: React.FC = () => {
   // Global stores
   const { translateX, translateY, scale, centerOnNode } = useCanvasStore();
@@ -44,8 +71,10 @@ export const AppShell: React.FC = () => {
   const [editingMotherId, setEditingMotherId] = useState<string | null>(null);
   const [deletingMember, setDeletingMember] = useState<FamilyMember | null>(null);
 
-  // Tree data state (starts clean and empty, filled by Supabase or user additions)
-  const [treeState, setTreeState] = useState<FamilyTreeFull>(emptyFamilyTree);
+  // Tree data state (starts from local cache if present, filled by Supabase or user additions)
+  const [treeState, setTreeState] = useState<FamilyTreeFull>(() => {
+    return loadCachedTree() || emptyFamilyTree;
+  });
 
   const { data: apiTree, isLoading: isTreeLoading, refetch: refetchTree } = useQuery({
     queryKey: ['tree', 'active'],
@@ -56,7 +85,7 @@ export const AppShell: React.FC = () => {
 
   useEffect(() => {
     if (apiTree) {
-      setTreeState({
+      const fullTree: FamilyTreeFull = {
         id: apiTree.id || (apiTree as any).tree?.id || 'tree_active',
         name: apiTree.name || (apiTree as any).tree?.name || 'DL-GENEALOGY',
         subtitle: apiTree.subtitle || (apiTree as any).tree?.subtitle || null,
@@ -66,7 +95,18 @@ export const AppShell: React.FC = () => {
         parentChildEdges: apiTree.parentChildEdges || [],
         unions: apiTree.unions || [],
         artifacts: apiTree.artifacts || [],
-      });
+      };
+      if (fullTree.members.length > 0) {
+        setTreeState(fullTree);
+        saveCachedTree(fullTree);
+      } else {
+        const cached = loadCachedTree();
+        if (cached && cached.members.length > 0) {
+          setTreeState(cached);
+        } else {
+          setTreeState(fullTree);
+        }
+      }
     }
   }, [apiTree]);
 
@@ -249,16 +289,20 @@ export const AppShell: React.FC = () => {
     if (!deletingMember) return;
     const memberId = deletingMember.id;
 
-    setTreeState((prev) => ({
-      ...prev,
-      members: prev.members.filter((m) => m.id !== memberId),
-      parentChildEdges: prev.parentChildEdges.filter(
-        (pc) => pc.parentId !== memberId && pc.childId !== memberId
-      ),
-      unions: prev.unions.filter(
-        (u) => u.partner1Id !== memberId && u.partner2Id !== memberId
-      ),
-    }));
+    setTreeState((prev) => {
+      const nextTree = {
+        ...prev,
+        members: prev.members.filter((m) => m.id !== memberId),
+        parentChildEdges: prev.parentChildEdges.filter(
+          (pc) => pc.parentId !== memberId && pc.childId !== memberId
+        ),
+        unions: prev.unions.filter(
+          (u) => u.partner1Id !== memberId && u.partner2Id !== memberId
+        ),
+      };
+      saveCachedTree(nextTree);
+      return nextTree;
+    });
 
     if (focusedMemberId === memberId) {
       closeFocus();
@@ -375,12 +419,14 @@ export const AppShell: React.FC = () => {
         });
       }
 
-      return {
+      const nextTree = {
         ...prev,
         members: updatedMembers,
         unions: updatedUnions,
         parentChildEdges: updatedEdges,
       };
+      saveCachedTree(nextTree);
+      return nextTree;
     });
 
     if (isEditing) {
@@ -397,6 +443,9 @@ export const AppShell: React.FC = () => {
         residence: formData.residence || undefined,
         bio: formData.bio || undefined,
         avatarUrl: formData.avatarUrl || undefined,
+        spouseId: formData.spouseId ?? '',
+        fatherId: formData.fatherId ?? '',
+        motherId: formData.motherId ?? '',
       })
         .then(() => refetchTree())
         .catch((err) => console.warn('API update failed, updated locally:', err));
@@ -419,10 +468,24 @@ export const AppShell: React.FC = () => {
         motherId: formData.motherId || undefined,
       })
         .then((newMember) => {
-          setTreeState((prev) => ({
-            ...prev,
-            members: prev.members.map((m) => (m.id === targetId ? { ...m, id: newMember.id } : m)),
-          }));
+          setTreeState((prev) => {
+            const nextTree = {
+              ...prev,
+              members: prev.members.map((m) => (m.id === targetId ? { ...m, id: newMember.id } : m)),
+              parentChildEdges: prev.parentChildEdges.map((pc) => ({
+                ...pc,
+                parentId: pc.parentId === targetId ? newMember.id : pc.parentId,
+                childId: pc.childId === targetId ? newMember.id : pc.childId,
+              })),
+              unions: prev.unions.map((u) => ({
+                ...u,
+                partner1Id: u.partner1Id === targetId ? newMember.id : u.partner1Id,
+                partner2Id: u.partner2Id === targetId ? newMember.id : u.partner2Id,
+              })),
+            };
+            saveCachedTree(nextTree);
+            return nextTree;
+          });
           refetchTree();
         })
         .catch((err) => console.warn('API create failed, created locally:', err));
@@ -639,6 +702,7 @@ export const AppShell: React.FC = () => {
         onDelete={handleDeleteRequest}
         initialData={editingMember}
         allMembers={dynamicMembers}
+        parentChildEdges={parentChildEdges}
         initialSpouseId={editingSpouseId}
         initialFatherId={editingFatherId}
         initialMotherId={editingMotherId}

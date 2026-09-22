@@ -40,13 +40,16 @@ export const SvgEdgeLayer: React.FC<SvgEdgeLayerProps> = memo(({ positions, unio
   }, [positions, unions, spotlightId]);
 
   const parentLines = useMemo(() => {
-    // Group parentChildEdges by childId
+    // Group parentChildEdges by childId and deduplicate by parentId
     const edgesByChild = new Map<string, ParentChild[]>();
     for (const edge of parentChildEdges) {
       if (!edgesByChild.has(edge.childId)) {
         edgesByChild.set(edge.childId, []);
       }
-      edgesByChild.get(edge.childId)!.push(edge);
+      const existing = edgesByChild.get(edge.childId)!;
+      if (!existing.some((e) => e.parentId === edge.parentId)) {
+        existing.push(edge);
+      }
     }
 
     const lines: React.ReactNode[] = [];
