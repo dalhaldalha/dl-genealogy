@@ -1,4 +1,5 @@
 import React from 'react';
+import { toRoman } from '@/lib/layout/generation-assigner';
 
 interface GenerationBannerProps {
   generation: number;
@@ -6,16 +7,8 @@ interface GenerationBannerProps {
   yOffset: number;
 }
 
-const ROMAN_NUMERALS: Record<number, string> = {
-  1: 'I',
-  2: 'II',
-  3: 'III',
-  4: 'IV',
-  5: 'V',
-};
-
 export const GenerationBanner: React.FC<GenerationBannerProps> = ({ generation, label, yOffset }) => {
-  const roman = ROMAN_NUMERALS[generation] || String(generation);
+  const roman = toRoman(generation);
 
   return (
     <div

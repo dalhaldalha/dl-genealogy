@@ -23,13 +23,10 @@ import { emptyFamilyTree } from '@/data/mockTreeData';
 import { fetchTree } from '@/api/trees';
 import { createMember, updateMember, deleteMember } from '@/api/members';
 import type { FamilyMember, FamilyTreeFull } from '@kinfolk/shared';
-
-const GENERATION_LABELS: Record<number, string> = {
-  1: 'Founders (1910 - 1930)',
-  2: 'Mid-Century Patriarchs & Matriarchs (1940 - 1965)',
-  3: 'The Innovators (1970 - 1995)',
-  4: 'The Next Era (2000 - Present)',
-};
+import {
+  computeDynamicGenerations,
+  getDynamicGenerationLabel,
+} from '@/lib/layout/generation-assigner';
 
 export const AppShell: React.FC = () => {
   // Global stores
@@ -122,27 +119,36 @@ export const AppShell: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isAdminToggleVisible, role, setRole, setIsAdminToggleVisible, setIsAdminModalOpen]);
 
+  // Dynamically derive generation numbers for all members based on tree hierarchy & unions
+  const dynamicMembers = useMemo(() => {
+    const genMap = computeDynamicGenerations(members, parentChildEdges, unions);
+    return members.map((m) => {
+      const dynGen = genMap.get(m.id) ?? m.generation ?? 1;
+      return m.generation === dynGen ? m : { ...m, generation: dynGen };
+    });
+  }, [members, parentChildEdges, unions]);
+
   // Compute graph layout via ELK.js
-  const { nodePositions } = useTreeLayout(members, parentChildEdges, unions);
+  const { nodePositions } = useTreeLayout(dynamicMembers, parentChildEdges, unions);
 
   // Auto-center camera when members first load into layout
   const [hasInitialCentered, setHasInitialCentered] = useState(false);
   useEffect(() => {
-    if (!hasInitialCentered && members.length > 0 && nodePositions.size > 0) {
-      const firstMember = members[0];
+    if (!hasInitialCentered && dynamicMembers.length > 0 && nodePositions.size > 0) {
+      const firstMember = dynamicMembers[0];
       const pos = nodePositions.get(firstMember.id);
       if (pos) {
         centerOnNode(pos.x, pos.y, pos.width, pos.height, viewportSize.width, viewportSize.height, 0);
         setHasInitialCentered(true);
       }
     }
-  }, [hasInitialCentered, members, nodePositions, viewportSize, centerOnNode]);
+  }, [hasInitialCentered, dynamicMembers, nodePositions, viewportSize, centerOnNode]);
 
   // Focused member object
   const focusedMember = useMemo(() => {
     if (!focusedMemberId) return null;
-    return members.find((m) => m.id === focusedMemberId) || null;
-  }, [members, focusedMemberId]);
+    return dynamicMembers.find((m) => m.id === focusedMemberId) || null;
+  }, [dynamicMembers, focusedMemberId]);
 
   // Center canvas camera on selected member (offsetting for the 512px drawer)
   const handleSpotlight = useCallback(
@@ -168,7 +174,7 @@ export const AppShell: React.FC = () => {
   };
 
   const handleEdit = (memberId: string) => {
-    const member = members.find((m) => m.id === memberId);
+    const member = dynamicMembers.find((m) => m.id === memberId);
     if (member) {
       setEditingMember(member);
       // Determine current spouse from unions
@@ -185,7 +191,7 @@ export const AppShell: React.FC = () => {
       let fatherId: string | null = null;
       let motherId: string | null = null;
       parentLinks.forEach((link) => {
-        const parentMember = members.find((m) => m.id === link.parentId);
+        const parentMember = dynamicMembers.find((m) => m.id === link.parentId);
         if (parentMember?.gender === 'female') {
           motherId = link.parentId;
         } else {
@@ -200,7 +206,7 @@ export const AppShell: React.FC = () => {
   };
 
   const handleAddChild = (parentId: string) => {
-    const parent = members.find((m) => m.id === parentId);
+    const parent = dynamicMembers.find((m) => m.id === parentId);
     const newChildStub: Partial<FamilyMember> = {
       lastName: parent ? parent.lastName : '',
       branch: parent ? parent.branch : 'paternal',
@@ -272,7 +278,7 @@ export const AppShell: React.FC = () => {
     let generation = Number(formData.generation) || 1;
     const parentAnchorId = formData.fatherId || formData.motherId;
     if (parentAnchorId) {
-      const parent = members.find((m) => m.id === parentAnchorId);
+      const parent = dynamicMembers.find((m) => m.id === parentAnchorId);
       if (parent) {
         generation = parent.generation + 1;
       }
@@ -432,31 +438,38 @@ export const AppShell: React.FC = () => {
   // Generation banner Y-offsets
   const generationBanners = useMemo(() => {
     const genMap = new Map<number, number>();
-    members.forEach((m) => {
+    const genMembersMap = new Map<number, FamilyMember[]>();
+
+    dynamicMembers.forEach((m) => {
       const pos = nodePositions.get(m.id);
       if (pos) {
         const currentMin = genMap.get(m.generation) ?? Infinity;
         if (pos.y < currentMin) {
           genMap.set(m.generation, pos.y);
         }
+        if (!genMembersMap.has(m.generation)) {
+          genMembersMap.set(m.generation, []);
+        }
+        genMembersMap.get(m.generation)!.push(m);
       }
     });
 
     const banners: Array<{ generation: number; label: string; yOffset: number }> = [];
     genMap.forEach((y, gen) => {
+      const membersInGen = genMembersMap.get(gen) || [];
       banners.push({
         generation: gen,
-        label: GENERATION_LABELS[gen] || `Era ${gen}`,
+        label: getDynamicGenerationLabel(gen, membersInGen),
         yOffset: y - 60,
       });
     });
 
     return banners.sort((a, b) => a.generation - b.generation);
-  }, [members, nodePositions]);
+  }, [dynamicMembers, nodePositions]);
 
   // Mini-map node positions
   const miniMapMembers = useMemo(() => {
-    return members.map((m) => {
+    return dynamicMembers.map((m) => {
       const pos = nodePositions.get(m.id);
       return {
         id: m.id,
@@ -464,7 +477,7 @@ export const AppShell: React.FC = () => {
         y: pos ? pos.y : 0,
       };
     });
-  }, [members, nodePositions]);
+  }, [dynamicMembers, nodePositions]);
 
   return (
     <div
@@ -556,7 +569,7 @@ export const AppShell: React.FC = () => {
           ))}
 
           {/* Member Nodes */}
-          {members.map((member) => {
+          {dynamicMembers.map((member) => {
             const pos = nodePositions.get(member.id) || {
               x: 0,
               y: 0,
@@ -603,7 +616,7 @@ export const AppShell: React.FC = () => {
         member={focusedMember}
         isOpen={isDrawerOpen}
         isAdmin={role === 'admin'}
-        allMembers={members}
+        allMembers={dynamicMembers}
         parentChildEdges={parentChildEdges}
         unions={unions}
         onClose={closeFocus}
@@ -625,7 +638,7 @@ export const AppShell: React.FC = () => {
         onSubmit={handleFormSubmit}
         onDelete={handleDeleteRequest}
         initialData={editingMember}
-        allMembers={members}
+        allMembers={dynamicMembers}
         initialSpouseId={editingSpouseId}
         initialFatherId={editingFatherId}
         initialMotherId={editingMotherId}
