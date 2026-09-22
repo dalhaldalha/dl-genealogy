@@ -49,7 +49,7 @@ process.on('SIGINT', async () => {
   process.exit(0);
 });
 
-// Run standalone server in local/standard environments, but not when imported by Vercel Serverless Functions
-if (!process.env.VERCEL && process.env.NODE_ENV !== 'test') {
+// Run standalone server in local/standard environments, but not when imported by Vercel/Lambda Serverless Functions
+if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME && process.env.NODE_ENV !== 'test') {
   start();
 }
