@@ -20,6 +20,7 @@ server.register(sensible);
 // Health check endpoints for Render and monitoring
 server.get('/', async () => ({ status: 'ok', service: 'kinfolk-api' }));
 server.get('/health', async () => ({ status: 'ok', service: 'kinfolk-api' }));
+server.get('/api', async () => ({ status: 'ok', service: 'kinfolk-api' }));
 server.get('/api/health', async () => ({ status: 'ok', service: 'kinfolk-api' }));
 
 server.register(treesPlugin);

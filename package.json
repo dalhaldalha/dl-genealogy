@@ -12,7 +12,7 @@
     "db:seed": "pnpm --filter api db:seed",
     "db:push": "pnpm --filter api db:push",
     "prisma:generate": "pnpm --filter @kinfolk/api prisma:generate",
-    "build:vercel": "pnpm --filter @kinfolk/api prisma:generate && pnpm --filter @kinfolk/web build"
+    "build:vercel": "prisma generate --schema=apps/api/prisma/schema.prisma && pnpm --filter @kinfolk/api prisma:generate && pnpm --filter @kinfolk/web build"
   },
   "dependencies": {
     "@prisma/client": "^6.0.0",
