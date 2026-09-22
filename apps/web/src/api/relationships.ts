@@ -4,7 +4,7 @@ import type { ParentChild, CreateUnionInput, Union } from '@kinfolk/shared';
 export async function linkParent(memberId: string, parentId: string, type?: string): Promise<ParentChild> {
   return apiRequest<ParentChild>(`/members/${memberId}/parents/${parentId}`, {
     method: 'POST',
-    body: JSON.stringify({ type }),
+    body: JSON.stringify({ parentId, relationshipType: type || 'biological', type: type || 'biological' }),
   });
 }
 

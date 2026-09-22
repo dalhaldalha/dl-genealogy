@@ -12,10 +12,18 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     }
 
     await server.ready();
-    server.server.emit('request', req, res);
+
+    await new Promise<void>((resolve, reject) => {
+      res.on('finish', resolve);
+      res.on('close', resolve);
+      res.on('error', reject);
+      server.server.emit('request', req, res);
+    });
   } catch (err: any) {
-    res.statusCode = 500;
-    res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({ error: 'Server initialization error', message: err?.message || String(err) }));
+    if (!res.headersSent) {
+      res.statusCode = 500;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ error: 'Server initialization error', message: err?.message || String(err) }));
+    }
   }
 }

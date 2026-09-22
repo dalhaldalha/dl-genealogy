@@ -19,8 +19,27 @@ const createUnionSchema = z.object({
 export default async function relationshipsPlugin(server: FastifyInstance) {
   const addParentHandler = async (request: any, reply: any) => {
     try {
-      const { memberId } = request.params as { memberId: string };
-      const data = createParentChildSchema.parse(request.body);
+      const { memberId, parentId: paramParentId } = request.params as { memberId: string; parentId?: string };
+      const body = request.body || {};
+      const parentId = paramParentId || body.parentId;
+      const relationshipType = body.relationshipType || body.type;
+
+      const data = createParentChildSchema.parse({
+        parentId,
+        relationshipType
+      });
+
+      const existing = await prisma.parentChild.findUnique({
+        where: {
+          parentId_childId: {
+            parentId: data.parentId,
+            childId: memberId
+          }
+        }
+      });
+      if (existing) {
+        return reply.code(200).send(existing);
+      }
 
       const relation = await prisma.parentChild.create({
         data: {
@@ -88,6 +107,8 @@ export default async function relationshipsPlugin(server: FastifyInstance) {
 
   server.post('/api/members/:memberId/parents', addParentHandler);
   server.post('/members/:memberId/parents', addParentHandler);
+  server.post('/api/members/:memberId/parents/:parentId', addParentHandler);
+  server.post('/members/:memberId/parents/:parentId', addParentHandler);
 
   server.delete('/api/members/:memberId/parents/:parentId', deleteParentHandler);
   server.delete('/members/:memberId/parents/:parentId', deleteParentHandler);

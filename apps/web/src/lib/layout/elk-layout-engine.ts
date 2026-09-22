@@ -114,15 +114,36 @@ export async function computeTreeLayout(
     processedMembers.add(member.id);
   }
 
-  // Create edges
+  // Create edges with self-loop and cycle prevention
   const edges = [];
   const processedEdges = new Set<string>();
+  const adj = new Map<string, Set<string>>();
+
+  const hasPath = (start: string, target: string, visited = new Set<string>()): boolean => {
+    if (start === target) return true;
+    visited.add(start);
+    const neighbors = adj.get(start);
+    if (neighbors) {
+      for (const n of neighbors) {
+        if (!visited.has(n) && hasPath(n, target, visited)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  };
 
   for (const pc of parentChildEdges) {
     const parentClusterId = memberToClusterId.get(pc.parentId);
     const sourceId = parentClusterId || pc.parentId;
     const childClusterId = memberToClusterId.get(pc.childId);
     const targetId = childClusterId || pc.childId;
+
+    // Prevent self-loops
+    if (sourceId === targetId) continue;
+
+    // Prevent cycles in ELK layered graph
+    if (hasPath(targetId, sourceId)) continue;
 
     const edgeId = `${sourceId}_${targetId}`;
     if (!processedEdges.has(edgeId)) {
@@ -132,6 +153,9 @@ export async function computeTreeLayout(
         targets: [targetId],
       });
       processedEdges.add(edgeId);
+
+      if (!adj.has(sourceId)) adj.set(sourceId, new Set());
+      adj.get(sourceId)!.add(targetId);
     }
   }
 
@@ -157,10 +181,19 @@ export async function computeTreeLayout(
     const x = offsetX + (node.x || 0);
     const y = offsetY + (node.y || 0);
     
-    if (node.id !== 'root' && !node.id.startsWith('pair_')) {
+    // Only map actual family member nodes, never compound cluster containers
+    if (memberMap.has(node.id)) {
+      const member = memberMap.get(node.id)!;
+      const gen = member.generation && member.generation >= 1 ? member.generation : 1;
+      const expectedY = 12 + (gen - 1) * (CARD_HEIGHT + GENERATION_GAP);
+      
+      // Pin Y strictly to the generation row so disconnected nodes or complex subgraphs
+      // never scramble generation rows or disrupt banners
+      const finalY = expectedY;
+
       positions.set(node.id, {
         x,
-        y,
+        y: finalY,
         width: node.width || CARD_WIDTH,
         height: node.height || CARD_HEIGHT
       });
