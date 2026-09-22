@@ -14,9 +14,9 @@ export const SvgEdgeLayer: React.FC<SvgEdgeLayerProps> = memo(({ positions, unio
     return unions.map(union => {
       const p1 = positions.get(union.partner1Id);
       const p2 = positions.get(union.partner2Id);
-      if (!p1 || !p2) return null;
-      
-      const { path, midpoint } = calcMarriageLine(p1, p2);
+      const left = p1.x < p2.x ? p1 : p2;
+      const right = p1.x < p2.x ? p2 : p1;
+      const { path, midpoint } = calcMarriageLine(left, right);
       const isHighlighted = spotlightId && (spotlightId === union.partner1Id || spotlightId === union.partner2Id);
       
       return (

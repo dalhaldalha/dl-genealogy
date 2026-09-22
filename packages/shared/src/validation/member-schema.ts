@@ -8,6 +8,7 @@ const memberBaseSchema = z.object({
   gender: z.enum(['male', 'female']).default('male'),
   branch: z.enum(['paternal', 'maternal']).optional(),
   isDeceased: z.boolean().default(false).optional(),
+  generation: z.number().int().optional(),
   dateOfDeath: z.string().nullable().optional().or(z.literal('')),
   profession: z.string().nullable().optional().or(z.literal('')),
   residence: z.string().nullable().optional().or(z.literal('')),

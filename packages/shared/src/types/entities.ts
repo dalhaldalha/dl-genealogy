@@ -90,6 +90,7 @@ export interface CreateMemberInput {
   branch?: Branch;
   isDeceased?: boolean;
   dateOfDeath?: string | null;
+  generation?: number;
   profession?: string | null;
   residence?: string | null;
   bio?: string | null;

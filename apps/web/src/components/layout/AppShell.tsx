@@ -234,8 +234,11 @@ export const AppShell: React.FC = () => {
         const parentMember = dynamicMembers.find((m) => m.id === link.parentId);
         if (parentMember?.gender === 'female') {
           motherId = link.parentId;
-        } else {
+        } else if (parentMember?.gender === 'male') {
           fatherId = link.parentId;
+        } else {
+          if (!fatherId) fatherId = link.parentId;
+          else if (!motherId) motherId = link.parentId;
         }
       });
       setEditingFatherId(fatherId);
@@ -438,6 +441,7 @@ export const AppShell: React.FC = () => {
         dateOfBirth: formData.dateOfBirth,
         dateOfDeath: formData.isDeceased && formData.dateOfDeath ? formData.dateOfDeath : undefined,
         isDeceased: Boolean(formData.isDeceased),
+        generation: generation,
         branch: formData.branch,
         profession: formData.profession || undefined,
         residence: formData.residence || undefined,
@@ -458,6 +462,7 @@ export const AppShell: React.FC = () => {
         dateOfBirth: formData.dateOfBirth,
         dateOfDeath: formData.isDeceased && formData.dateOfDeath ? formData.dateOfDeath : undefined,
         isDeceased: Boolean(formData.isDeceased),
+        generation: generation,
         branch: formData.branch,
         profession: formData.profession || undefined,
         residence: formData.residence || undefined,

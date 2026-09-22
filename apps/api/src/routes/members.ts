@@ -8,7 +8,7 @@ const createMemberSchema = z.object({
   lastName: z.string().min(1),
   maidenName: z.string().nullable().optional().or(z.literal('')),
   gender: z.nativeEnum(Gender).optional(),
-  dateOfBirth: z.string().transform(str => new Date(str)),
+  dateOfBirth: z.string().transform(str => (str && str.trim() !== '') ? new Date(str) : new Date()),
   dateOfDeath: z.string().nullable().optional().transform(str => (str && str.trim() !== '') ? new Date(str) : undefined),
   isDeceased: z.boolean().optional(),
   generation: z.number().optional(),
@@ -186,6 +186,71 @@ export default async function membersPlugin(server: FastifyInstance) {
         include: { parent: true }
       });
 
+      // --- Father relationship sync ---
+      if (fatherId !== undefined) {
+        const cleanFatherId = fatherId && fatherId.trim() !== '' ? fatherId : null;
+        const existingFatherLinks = currentParentLinks.filter(
+          (pc) => pc.parent.gender === 'male' || (pc.parent.gender as string) !== 'female'
+        );
+        for (const link of existingFatherLinks) {
+          if (!cleanFatherId || link.parentId !== cleanFatherId) {
+            await prisma.parentChild.delete({ where: { id: link.id } }).catch(() => {});
+          }
+        }
+        if (cleanFatherId) {
+          const alreadyLinked = existingFatherLinks.some((pc) => pc.parentId === cleanFatherId);
+          if (!alreadyLinked) {
+            await prisma.parentChild.upsert({
+              where: {
+                parentId_childId: {
+                  parentId: cleanFatherId,
+                  childId: memberId
+                }
+              },
+              create: {
+                parentId: cleanFatherId,
+                childId: memberId,
+                relationshipType: 'biological'
+              },
+              update: {}
+            });
+          }
+        }
+      }
+
+      // --- Mother relationship sync ---
+      if (motherId !== undefined) {
+        const cleanMotherId = motherId && motherId.trim() !== '' ? motherId : null;
+        const existingMotherLinks = currentParentLinks.filter(
+          (pc) => pc.parent.gender === 'female'
+        );
+        for (const link of existingMotherLinks) {
+          if (!cleanMotherId || link.parentId !== cleanMotherId) {
+            await prisma.parentChild.delete({ where: { id: link.id } }).catch(() => {});
+          }
+        }
+        if (cleanMotherId) {
+          const alreadyLinked = existingMotherLinks.some((pc) => pc.parentId === cleanMotherId);
+          if (!alreadyLinked) {
+            await prisma.parentChild.upsert({
+              where: {
+                parentId_childId: {
+                  parentId: cleanMotherId,
+                  childId: memberId
+                }
+              },
+              create: {
+                parentId: cleanMotherId,
+                childId: memberId,
+                relationshipType: 'biological'
+              },
+              update: {}
+            });
+          }
+        }
+      }
+
+      // Determine active father and mother IDs after update
       const currentFatherLink = currentParentLinks.find(
         (pc) => pc.parent.gender === 'male' || (pc.parent.gender as string) !== 'female'
       );
@@ -193,61 +258,6 @@ export default async function membersPlugin(server: FastifyInstance) {
         (pc) => pc.parent.gender === 'female'
       );
 
-      // --- Father relationship sync ---
-      if (fatherId !== undefined) {
-        const cleanFatherId = fatherId && fatherId.trim() !== '' ? fatherId : null;
-        if (cleanFatherId) {
-          if (currentFatherLink && currentFatherLink.parentId !== cleanFatherId) {
-            await prisma.parentChild.delete({ where: { id: currentFatherLink.id } });
-            await prisma.parentChild.create({
-              data: {
-                parentId: cleanFatherId,
-                childId: memberId,
-                relationshipType: 'biological'
-              }
-            });
-          } else if (!currentFatherLink) {
-            await prisma.parentChild.create({
-              data: {
-                parentId: cleanFatherId,
-                childId: memberId,
-                relationshipType: 'biological'
-              }
-            });
-          }
-        } else if (currentFatherLink) {
-          await prisma.parentChild.delete({ where: { id: currentFatherLink.id } });
-        }
-      }
-
-      // --- Mother relationship sync ---
-      if (motherId !== undefined) {
-        const cleanMotherId = motherId && motherId.trim() !== '' ? motherId : null;
-        if (cleanMotherId) {
-          if (currentMotherLink && currentMotherLink.parentId !== cleanMotherId) {
-            await prisma.parentChild.delete({ where: { id: currentMotherLink.id } });
-            await prisma.parentChild.create({
-              data: {
-                parentId: cleanMotherId,
-                childId: memberId,
-                relationshipType: 'biological'
-              }
-            });
-          } else if (!currentMotherLink) {
-            await prisma.parentChild.create({
-              data: {
-                parentId: cleanMotherId,
-                childId: memberId,
-                relationshipType: 'biological'
-              }
-            });
-          }
-        } else if (currentMotherLink) {
-          await prisma.parentChild.delete({ where: { id: currentMotherLink.id } });
-        }
-      }
-
-      // Determine active father and mother IDs after update
       const activeFatherId =
         fatherId !== undefined
           ? (fatherId && fatherId.trim() !== '' ? fatherId : null)
@@ -275,22 +285,34 @@ export default async function membersPlugin(server: FastifyInstance) {
               partner2Id: activeMotherId,
               unionType: 'marriage'
             }
-          });
+          }).catch(() => {});
         }
       }
 
       // --- Spouse relationship sync ---
       if (spouseId !== undefined) {
         const cleanSpouseId = spouseId && spouseId.trim() !== '' ? spouseId : null;
+        const currentUnions = await prisma.union.findMany({
+          where: {
+            OR: [
+              { partner1Id: memberId },
+              { partner2Id: memberId }
+            ]
+          }
+        });
         if (cleanSpouseId) {
-          const unionExists = await prisma.union.findFirst({
-            where: {
-              OR: [
-                { partner1Id: memberId, partner2Id: cleanSpouseId },
-                { partner1Id: cleanSpouseId, partner2Id: memberId }
-              ]
+          // Remove old unions with other partners
+          for (const u of currentUnions) {
+            const otherPartnerId = u.partner1Id === memberId ? u.partner2Id : u.partner1Id;
+            if (otherPartnerId !== cleanSpouseId) {
+              await prisma.union.delete({ where: { id: u.id } }).catch(() => {});
             }
-          });
+          }
+          const unionExists = currentUnions.some(
+            (u) =>
+              (u.partner1Id === memberId && u.partner2Id === cleanSpouseId) ||
+              (u.partner1Id === cleanSpouseId && u.partner2Id === memberId)
+          );
           if (!unionExists) {
             await prisma.union.create({
               data: {
@@ -298,7 +320,12 @@ export default async function membersPlugin(server: FastifyInstance) {
                 partner2Id: cleanSpouseId,
                 unionType: 'marriage'
               }
-            });
+            }).catch(() => {});
+          }
+        } else {
+          // If spouse explicitly removed, delete existing unions for this member
+          for (const u of currentUnions) {
+            await prisma.union.delete({ where: { id: u.id } }).catch(() => {});
           }
         }
       }

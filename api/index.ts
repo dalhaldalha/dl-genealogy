@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'http';
+import server from '../apps/api/src/server';
 
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
   try {
@@ -9,32 +10,13 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       req.url = originalPath.includes('?') ? originalPath : `${originalPath}${queryString}`;
     }
 
-    const { default: server } = await import('../apps/api/src/server');
     await server.ready();
-
-    await new Promise<void>((resolve, reject) => {
-      res.on('finish', resolve);
-      res.on('close', resolve);
-      res.on('error', reject);
-      server.server.emit('request', req, res);
-    });
+    server.server.emit('request', req, res);
   } catch (err: any) {
-    console.error('Serverless execution error:', err);
     if (!res.headersSent) {
       res.statusCode = 500;
       res.setHeader('Content-Type', 'application/json');
-      res.end(
-        JSON.stringify(
-          {
-            error: 'Serverless execution error',
-            name: err?.name,
-            message: err?.message || String(err),
-            stack: err?.stack,
-          },
-          null,
-          2
-        )
-      );
+      res.end(JSON.stringify({ error: 'Serverless execution error', message: err?.message || String(err) }));
     }
   }
 }
