@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Search, Minus, Plus, Maximize, Moon, Sun, Eye, Shield, X } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Search, Minus, Plus, Maximize, Moon, Sun, Eye, Shield, X, Lock } from 'lucide-react';
 import { useCanvasStore } from '@/stores/canvas-store';
 import { useAuthStore } from '@/stores/auth-store';
 import { SearchBar } from '@/components/search/SearchBar';
@@ -26,8 +26,53 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
   onSelectMember,
 }) => {
   const { scale, zoomAtPoint, resetView } = useCanvasStore();
-  const { role, setRole, theme, toggleTheme, isAdminToggleVisible, setIsAdminModalOpen } = useAuthStore();
+  const {
+    role,
+    setRole,
+    theme,
+    toggleTheme,
+    isAdminToggleVisible,
+    setIsAdminToggleVisible,
+    setIsAdminModalOpen,
+  } = useAuthStore();
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+
+  // Mobile gesture to unlock admin: long-press (1.2s) or triple-tap on family crest
+  const pressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const tapCountRef = useRef<number>(0);
+  const tapResetTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleCrestTouchStart = () => {
+    pressTimerRef.current = setTimeout(() => {
+      setIsAdminToggleVisible(true);
+      setIsAdminModalOpen(true);
+      if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+        navigator.vibrate?.(50);
+      }
+    }, 1200);
+  };
+
+  const handleCrestTouchEnd = () => {
+    if (pressTimerRef.current) {
+      clearTimeout(pressTimerRef.current);
+      pressTimerRef.current = null;
+    }
+  };
+
+  const handleCrestClick = () => {
+    tapCountRef.current += 1;
+    if (tapResetTimerRef.current) clearTimeout(tapResetTimerRef.current);
+
+    if (tapCountRef.current >= 3) {
+      tapCountRef.current = 0;
+      setIsAdminToggleVisible(true);
+      setIsAdminModalOpen(true);
+    } else {
+      tapResetTimerRef.current = setTimeout(() => {
+        tapCountRef.current = 0;
+      }, 500);
+    }
+  };
 
   const handleZoomIn = () => {
     zoomAtPoint(0.15, window.innerWidth / 2, window.innerHeight / 2);
@@ -44,7 +89,13 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
       <div className="flex items-center justify-between px-3.5 py-2.5 sm:px-6 sm:py-3.5 gap-2 sm:gap-4">
         {/* Brand & Family Crest */}
         <div className="flex items-center gap-2.5 sm:gap-3.5 shrink-0">
-          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-heritage-gold to-amber-200 p-[1px] shadow-sm flex items-center justify-center flex-shrink-0">
+          <div
+            onClick={handleCrestClick}
+            onTouchStart={handleCrestTouchStart}
+            onTouchEnd={handleCrestTouchEnd}
+            className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-heritage-gold to-amber-200 p-[1px] shadow-sm flex items-center justify-center flex-shrink-0 cursor-pointer active:scale-95 transition-transform"
+            title="DL-Genealogy Crest (Tap 3x or hold to unlock Admin)"
+          >
             <div className="w-full h-full bg-zinc-900 rounded-[9px] sm:rounded-[11px] flex items-center justify-center text-heritage-gold font-serif font-bold text-xs sm:text-sm tracking-wider">
               DL
             </div>
@@ -207,6 +258,27 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
                 </button>
               );
             })}
+          </div>
+
+          {/* Mobile Admin Mode Toggle / Login */}
+          <div className="pt-1 flex items-center justify-between gap-2 border-t border-zinc-200/50 dark:border-zinc-800/50">
+            {role === 'admin' ? (
+              <button
+                onClick={() => setRole('viewer')}
+                className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 active:scale-95 transition-all"
+              >
+                <Shield className="w-3.5 h-3.5" />
+                Admin Active · Tap to Exit
+              </button>
+            ) : (
+              <button
+                onClick={() => setIsAdminModalOpen(true)}
+                className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 active:scale-95 transition-all"
+              >
+                <Lock className="w-3.5 h-3.5 text-heritage-gold" />
+                Admin Login
+              </button>
+            )}
           </div>
         </div>
       )}

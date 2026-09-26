@@ -206,7 +206,7 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-zinc-950/60 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
-      <div className="glass-panel w-full max-w-xl rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh]">
+      <div className="glass-panel w-full max-w-xl rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden flex flex-col max-h-[92dvh] sm:max-h-[90vh]">
         {/* Modal Header */}
         <div className="p-3.5 sm:p-5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
@@ -230,7 +230,8 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
         </div>
 
         {/* Modal Form */}
-        <form onSubmit={handleSubmit(onSubmit)} className="p-4 sm:p-6 space-y-3.5 sm:space-y-4 overflow-y-auto flex-1 text-xs">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden min-h-0 text-xs">
+          <div className="p-4 sm:p-6 space-y-3.5 sm:space-y-4 overflow-y-auto flex-1 custom-scrollbar">
           {/* Name Fields */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
             <div>
@@ -573,35 +574,36 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
               className="w-full px-3 py-2 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:ring-1 focus:ring-heritage-gold transition-all"
             />
           </div>
+        </div>
 
-          {/* Buttons */}
-          <div className="pt-2 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
-            {initialData?.id && (
-              <button
-                type="button"
-                onClick={() => onDelete?.(initialData.id)}
-                className="px-3.5 py-2 text-rose-500 hover:bg-rose-500/10 rounded-xl font-semibold transition-all text-center"
-              >
-                Delete Member
-              </button>
-            )}
-            <div className="flex items-center gap-2 sm:ml-auto">
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 sm:flex-none px-4 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 font-semibold transition-all text-center"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="flex-1 sm:flex-none px-5 py-2 rounded-xl bg-heritage-gold hover:bg-heritage-goldHover text-zinc-950 font-bold transition-all shadow-md text-center"
-              >
-                Save Ancestor
-              </button>
-            </div>
+        {/* Sticky Buttons / Actions */}
+        <div className="p-3 sm:p-4 border-t border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/95 dark:bg-zinc-900/95 backdrop-blur-sm flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2.5 shrink-0">
+          {initialData?.id && (
+            <button
+              type="button"
+              onClick={() => onDelete?.(initialData.id)}
+              className="px-3.5 py-2 text-rose-500 hover:bg-rose-500/10 rounded-xl font-semibold transition-all text-center"
+            >
+              Delete Member
+            </button>
+          )}
+          <div className="flex items-center gap-2 sm:ml-auto">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 sm:flex-none px-4 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 font-semibold transition-all text-center"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-heritage-gold hover:bg-heritage-goldHover text-zinc-950 font-bold transition-all shadow-md active:scale-95 text-center"
+            >
+              Save Ancestor
+            </button>
           </div>
-        </form>
+        </div>
+      </form>
       </div>
     </div>
   );

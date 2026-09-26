@@ -34,14 +34,19 @@ export function SpotlightDrawer({
 }: SpotlightDrawerProps) {
   return (
     <aside
-      className={`fixed top-0 right-0 h-full w-full max-w-lg bg-zinc-900/95 backdrop-blur-2xl border-l border-zinc-700/50 shadow-2xl z-50 transform transition-transform duration-300 ease-in-out flex flex-col ${
+      className={`fixed top-0 right-0 h-[100dvh] w-full max-w-lg bg-zinc-900/95 backdrop-blur-2xl border-l border-zinc-700/50 shadow-2xl z-50 transform transition-transform duration-300 ease-in-out flex flex-col ${
         isOpen ? 'translate-x-0' : 'translate-x-full'
       }`}
     >
+      {/* Mobile Top Grab Bar Affordance */}
+      <div className="sm:hidden flex justify-center pt-2.5 pb-1 shrink-0">
+        <div className="w-12 h-1 bg-zinc-600/80 rounded-full" />
+      </div>
+
       {member ? (
         <>
           {/* Header */}
-          <div className="flex items-center justify-between p-4 sm:p-6 border-b border-zinc-800/50 shrink-0">
+          <div className="flex items-center justify-between px-4 py-3 sm:p-6 border-b border-zinc-800/50 shrink-0">
             <div className="flex items-center gap-2 sm:gap-3">
               {member.generation !== undefined && (
                 <span className="px-2 sm:px-2.5 py-1 text-xs font-semibold rounded-lg bg-zinc-800 text-heritage-gold border border-heritage-gold/20">
@@ -106,16 +111,16 @@ export function SpotlightDrawer({
           </div>
 
           {/* Drawer Footer Actions */}
-          <div className="p-3 sm:p-4 pb-6 sm:pb-4 border-t border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50 flex items-center justify-between shrink-0">
+          <div className="p-3.5 sm:p-4 pb-6 sm:pb-4 border-t border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50 flex items-center justify-between shrink-0">
             <button
-              className="flex items-center gap-1.5 text-xs text-heritage-gold hover:underline font-semibold transition-all"
+              className="flex items-center gap-1.5 text-xs text-heritage-gold hover:underline font-semibold py-2 px-1 active:scale-95 transition-all"
               onClick={() => onRecenter?.(member.id)}
             >
-              <Crosshair className="w-3.5 h-3.5" />
+              <Crosshair className="w-4 h-4" />
               <span>Re-center Canvas</span>
             </button>
             <button
-              className="px-4 py-2 rounded-xl bg-zinc-200 dark:bg-zinc-800 text-xs font-semibold hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-all text-zinc-800 dark:text-zinc-200"
+              className="px-4 py-2.5 rounded-xl bg-zinc-200 dark:bg-zinc-800 text-xs font-semibold hover:bg-zinc-300 dark:hover:bg-zinc-700 active:scale-95 transition-all text-zinc-800 dark:text-zinc-200"
               onClick={onClose}
             >
               Close Inspector

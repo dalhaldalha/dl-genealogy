@@ -59,7 +59,7 @@ export const AdminLoginModal: React.FC = () => {
       onClick={handleClose}
     >
       <div 
-        className="glass-panel w-full max-w-sm rounded-2xl border border-zinc-200/80 dark:border-zinc-800 shadow-2xl p-6 relative space-y-4"
+        className="glass-panel w-full max-w-sm rounded-2xl border border-zinc-200/80 dark:border-zinc-800 shadow-2xl p-5 sm:p-6 relative space-y-4 max-h-[90dvh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}

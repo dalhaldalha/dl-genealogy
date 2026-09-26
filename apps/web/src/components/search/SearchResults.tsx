@@ -25,7 +25,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({ results, query, on
         <div
           key={m.id}
           onClick={() => onSelect(m.id)}
-          className="flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer transition-colors"
+          className="flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 active:bg-zinc-200 dark:active:bg-zinc-700 cursor-pointer transition-colors"
         >
           {m.avatarUrl ? (
             <img

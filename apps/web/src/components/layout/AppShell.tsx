@@ -732,7 +732,12 @@ export const AppShell: React.FC = () => {
         onClose={closeFocus}
         onSpotlight={handleSpotlight}
         onEdit={handleEdit}
-        onRecenter={handleSpotlight}
+        onRecenter={(id) => {
+          handleSpotlight(id);
+          if (viewportSize.width < 768) {
+            closeFocus();
+          }
+        }}
       />
 
       {/* 5. ADMIN ADD / EDIT MEMBER MODAL */}

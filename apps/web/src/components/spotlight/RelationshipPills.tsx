@@ -41,7 +41,7 @@ export function RelationshipPills({
     <button
       key={relatedMember.id}
       onClick={() => onSpotlight(relatedMember.id)}
-      className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-800/60 border border-zinc-700/50 hover:bg-zinc-700 hover:border-zinc-600 transition-colors group"
+      className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-800/60 border border-zinc-700/50 hover:bg-zinc-700 hover:border-zinc-600 active:scale-95 transition-all group"
     >
       <img 
         src={relatedMember.avatarUrl || '/placeholder-avatar.jpg'} 

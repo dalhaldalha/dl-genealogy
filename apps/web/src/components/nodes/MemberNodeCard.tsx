@@ -46,20 +46,30 @@ export function MemberNodeCard({
     >
       {/* Admin tools */}
       {isAdmin && (
-        <div className="absolute -top-3.5 right-2 flex items-center space-x-1 bg-zinc-800 rounded-full px-2 py-1 shadow-lg border border-zinc-700/50 z-20" onClick={(e) => e.stopPropagation()}>
+        <div 
+          className="absolute -top-4 right-2 flex items-center space-x-1 bg-zinc-800/95 backdrop-blur-sm rounded-full px-1.5 py-1 shadow-lg border border-zinc-700/60 z-20" 
+          onClick={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+        >
           <button
-            onClick={() => onEdit(member.id)}
-            className="p-1 text-zinc-400 hover:text-white transition-colors rounded-full hover:bg-zinc-700"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(member.id);
+            }}
+            className="w-7 h-7 sm:w-6 sm:h-6 flex items-center justify-center text-zinc-300 hover:text-white active:scale-90 transition-all rounded-full hover:bg-zinc-700 bg-zinc-700/50 sm:bg-transparent"
             title="Edit member"
           >
-            <Edit2 className="w-3 h-3" />
+            <Edit2 className="w-3.5 h-3.5 sm:w-3 sm:h-3" />
           </button>
           <button
-            onClick={() => onAddChild(member.id)}
-            className="p-1 text-zinc-400 hover:text-white transition-colors rounded-full hover:bg-zinc-700"
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddChild(member.id);
+            }}
+            className="w-7 h-7 sm:w-6 sm:h-6 flex items-center justify-center text-zinc-300 hover:text-white active:scale-90 transition-all rounded-full hover:bg-zinc-700 bg-zinc-700/50 sm:bg-transparent"
             title="Add child"
           >
-            <Plus className="w-3 h-3" />
+            <Plus className="w-3.5 h-3.5 sm:w-3 sm:h-3" />
           </button>
         </div>
       )}
@@ -116,7 +126,7 @@ export function MemberNodeCard({
             <MapPin className="w-3 h-3 mr-1 shrink-0" />
             <span className="truncate">{member.residence || 'Unknown location'}</span>
           </div>
-          <div className="flex items-center text-xs font-medium text-heritage-gold opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex items-center text-xs font-medium text-heritage-gold opacity-80 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
             <span>View</span>
             <ChevronRight className="w-3 h-3 ml-0.5" />
           </div>
