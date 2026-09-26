@@ -9,15 +9,40 @@ export default async function gedcomPlugin(server: FastifyInstance) {
       const tree = await prisma.familyTree.findUnique({
         where: { id: treeId },
         include: {
-          members: true,
-          parentChildEdges: true,
-          unions: true
+          members: {
+            include: {
+              parentOf: true,
+              childOf: true,
+              unionsAsPartner1: true,
+              unionsAsPartner2: true
+            }
+          }
         }
       });
 
       if (!tree) {
         return reply.notFound('Tree not found');
       }
+
+      // Collect all parent-child edges from members
+      const parentChildEdges: Array<{ parentId: string; childId: string }> = [];
+      for (const member of tree.members) {
+        for (const pc of member.parentOf) {
+          parentChildEdges.push({ parentId: pc.parentId, childId: pc.childId });
+        }
+      }
+
+      // Collect all unions from members (deduplicate by id)
+      const unionsMap = new Map<string, any>();
+      for (const member of tree.members) {
+        for (const u of member.unionsAsPartner1) {
+          unionsMap.set(u.id, u);
+        }
+        for (const u of member.unionsAsPartner2) {
+          unionsMap.set(u.id, u);
+        }
+      }
+      const unions = Array.from(unionsMap.values());
 
       let gedcom = '0 HEAD\n1 SOUR DL-Genealogy\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n';
       
@@ -46,8 +71,16 @@ export default async function gedcomPlugin(server: FastifyInstance) {
       }
 
       // Add FAM records
-      const families = new Map<string, any>();
-      for (const union of tree.unions) {
+      // Build child-to-parents map from collected edges
+      const childToParents = new Map<string, string[]>();
+      for (const pc of parentChildEdges) {
+        if (!childToParents.has(pc.childId)) {
+          childToParents.set(pc.childId, []);
+        }
+        childToParents.get(pc.childId)!.push(pc.parentId);
+      }
+
+      for (const union of unions) {
         const famId = `@F${union.id}@`;
         gedcom += `0 ${famId} FAM\n`;
         
@@ -64,32 +97,12 @@ export default async function gedcomPlugin(server: FastifyInstance) {
           gedcom += `1 MARR\n2 DATE ${union.unionDate.toISOString().split('T')[0]}\n`;
         }
 
-        // Children of this union
-        // A child belongs to this family if they have parent edges to both partners, or just one partner?
-        // Let's find children who have edges to either partner in this union.
-        // Actually, GEDCOM links CHIL to FAM. A child could be in multiple FAMs if parents had multiple marriages.
-        // For simplicity, find children who are linked to BOTH partners.
-        const children = tree.parentChildEdges.filter(pc => {
-           return pc.parentId === union.partner1Id || pc.parentId === union.partner2Id;
-        });
-
-        // Actually, it's better to group children by family. We'll simplify and just link children to FAM if they share parents.
-        // Let's create a map of children to parents.
-        const childToParents = new Map<string, string[]>();
-        for (const pc of tree.parentChildEdges) {
-           if (!childToParents.has(pc.childId)) {
-               childToParents.set(pc.childId, []);
-           }
-           childToParents.get(pc.childId)!.push(pc.parentId);
-        }
-
         for (const [childId, parents] of Array.from(childToParents.entries())) {
-           if (parents.includes(union.partner1Id) && parents.includes(union.partner2Id)) {
-               gedcom += `1 CHIL @I${childId}@\n`;
-           } else if (parents.includes(union.partner1Id) && !parents.includes(union.partner2Id) && parents.length === 1) {
-               // Only 1 parent known
-               gedcom += `1 CHIL @I${childId}@\n`;
-           }
+          if (parents.includes(union.partner1Id) && parents.includes(union.partner2Id)) {
+            gedcom += `1 CHIL @I${childId}@\n`;
+          } else if (parents.includes(union.partner1Id) && !parents.includes(union.partner2Id) && parents.length === 1) {
+            gedcom += `1 CHIL @I${childId}@\n`;
+          }
         }
       }
 
