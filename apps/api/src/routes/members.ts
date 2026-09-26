@@ -290,30 +290,30 @@ export default async function membersPlugin(server: FastifyInstance) {
       }
 
       // --- Spouse relationship sync ---
-      if (spouseId !== undefined) {
-        const cleanSpouseId = spouseId && spouseId.trim() !== '' ? spouseId : null;
-        const currentUnions = await prisma.union.findMany({
+      const { unlinkSpouseId } = request.body as any;
+      if (unlinkSpouseId) {
+        await prisma.union.deleteMany({
           where: {
             OR: [
-              { partner1Id: memberId },
-              { partner2Id: memberId }
+              { partner1Id: memberId, partner2Id: unlinkSpouseId },
+              { partner1Id: unlinkSpouseId, partner2Id: memberId }
             ]
           }
-        });
+        }).catch(() => {});
+      }
+
+      if (spouseId !== undefined) {
+        const cleanSpouseId = spouseId && spouseId.trim() !== '' ? spouseId : null;
         if (cleanSpouseId) {
-          // Remove old unions with other partners
-          for (const u of currentUnions) {
-            const otherPartnerId = u.partner1Id === memberId ? u.partner2Id : u.partner1Id;
-            if (otherPartnerId !== cleanSpouseId) {
-              await prisma.union.delete({ where: { id: u.id } }).catch(() => {});
+          const existingUnion = await prisma.union.findFirst({
+            where: {
+              OR: [
+                { partner1Id: memberId, partner2Id: cleanSpouseId },
+                { partner1Id: cleanSpouseId, partner2Id: memberId }
+              ]
             }
-          }
-          const unionExists = currentUnions.some(
-            (u) =>
-              (u.partner1Id === memberId && u.partner2Id === cleanSpouseId) ||
-              (u.partner1Id === cleanSpouseId && u.partner2Id === memberId)
-          );
-          if (!unionExists) {
+          });
+          if (!existingUnion) {
             await prisma.union.create({
               data: {
                 partner1Id: memberId,
@@ -321,11 +321,6 @@ export default async function membersPlugin(server: FastifyInstance) {
                 unionType: 'marriage'
               }
             }).catch(() => {});
-          }
-        } else {
-          // If spouse explicitly removed, delete existing unions for this member
-          for (const u of currentUnions) {
-            await prisma.union.delete({ where: { id: u.id } }).catch(() => {});
           }
         }
       }

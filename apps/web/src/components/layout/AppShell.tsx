@@ -22,6 +22,7 @@ import { useTreeLayout } from '@/hooks/useTreeLayout';
 import { emptyFamilyTree } from '@/data/mockTreeData';
 import { fetchTree } from '@/api/trees';
 import { createMember, updateMember, deleteMember } from '@/api/members';
+import { deleteUnion } from '@/api/relationships';
 import type { FamilyMember, FamilyTreeFull } from '@kinfolk/shared';
 import {
   computeDynamicGenerations,
@@ -37,7 +38,17 @@ function loadCachedTree(): FamilyTreeFull | null {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && Array.isArray(parsed.members) && parsed.members.length > 0) {
-        return parsed;
+        return {
+          id: parsed.id || 'tree_active',
+          name: parsed.name || 'DL-GENEALOGY',
+          subtitle: parsed.subtitle || null,
+          createdAt: parsed.createdAt || new Date().toISOString(),
+          updatedAt: parsed.updatedAt || new Date().toISOString(),
+          members: Array.isArray(parsed.members) ? parsed.members : [],
+          parentChildEdges: Array.isArray(parsed.parentChildEdges) ? parsed.parentChildEdges : [],
+          unions: Array.isArray(parsed.unions) ? parsed.unions : [],
+          artifacts: Array.isArray(parsed.artifacts) ? parsed.artifacts : [],
+        };
       }
     }
   } catch (e) {
@@ -110,7 +121,9 @@ export const AppShell: React.FC = () => {
     }
   }, [apiTree]);
 
-  const { members, parentChildEdges, unions } = treeState;
+  const members = Array.isArray(treeState?.members) ? treeState.members : [];
+  const parentChildEdges = Array.isArray(treeState?.parentChildEdges) ? treeState.parentChildEdges : [];
+  const unions = Array.isArray(treeState?.unions) ? treeState.unions : [];
 
   // Window viewport size tracking for layout & radar
   const [viewportSize, setViewportSize] = useState({
@@ -213,16 +226,45 @@ export const AppShell: React.FC = () => {
     setIsFormOpen(true);
   };
 
+  const handleUnlinkSpouse = (memberId: string, spouseId: string) => {
+    const targetUnion = unions.find(
+      (u) =>
+        (u.partner1Id === memberId && u.partner2Id === spouseId) ||
+        (u.partner1Id === spouseId && u.partner2Id === memberId)
+    );
+
+    setTreeState((prev) => {
+      const nextTree = {
+        ...prev,
+        unions: prev.unions.filter(
+          (u) =>
+            !(
+              (u.partner1Id === memberId && u.partner2Id === spouseId) ||
+              (u.partner1Id === spouseId && u.partner2Id === memberId)
+            )
+        ),
+      };
+      saveCachedTree(nextTree);
+      return nextTree;
+    });
+
+    if (targetUnion?.id) {
+      deleteUnion(targetUnion.id)
+        .then(() => refetchTree())
+        .catch((err) => console.warn('API delete union failed, updated locally:', err));
+    }
+  };
+
   const handleEdit = (memberId: string) => {
     const member = dynamicMembers.find((m) => m.id === memberId);
     if (member) {
       setEditingMember(member);
-      // Determine current spouse from unions
-      const union = unions.find((u) => u.partner1Id === memberId || u.partner2Id === memberId);
-      const spouseId = union
-        ? union.partner1Id === memberId
-          ? union.partner2Id
-          : union.partner1Id
+      // If exactly 1 spouse, pre-fill for single couple; if multiple spouses (polygamy), keep empty so "Add Spouse" defaults to none
+      const memberUnions = unions.filter((u) => u.partner1Id === memberId || u.partner2Id === memberId);
+      const spouseId = memberUnions.length === 1
+        ? memberUnions[0].partner1Id === memberId
+          ? memberUnions[0].partner2Id
+          : memberUnions[0].partner1Id
         : null;
       setEditingSpouseId(spouseId);
 
@@ -708,6 +750,8 @@ export const AppShell: React.FC = () => {
         initialData={editingMember}
         allMembers={dynamicMembers}
         parentChildEdges={parentChildEdges}
+        unions={unions}
+        onUnlinkSpouse={handleUnlinkSpouse}
         initialSpouseId={editingSpouseId}
         initialFatherId={editingFatherId}
         initialMotherId={editingMotherId}

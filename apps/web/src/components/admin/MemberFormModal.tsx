@@ -2,8 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createMemberSchema } from '@kinfolk/shared';
-import type { FamilyMember, ParentChild } from '@kinfolk/shared';
-import { X, UserCog, Upload, Trash2, RefreshCw } from 'lucide-react';
+import type { FamilyMember, ParentChild, Union } from '@kinfolk/shared';
+import { X, UserCog, Upload, Trash2, RefreshCw, Heart } from 'lucide-react';
 import { processImageFile } from '@/lib/images/process-image';
 import { getDescendantIds } from '@/lib/layout/generation-assigner';
 
@@ -15,6 +15,8 @@ interface MemberFormModalProps {
   initialData: FamilyMember | null;
   allMembers: FamilyMember[];
   parentChildEdges?: ParentChild[];
+  unions?: Union[];
+  onUnlinkSpouse?: (memberId: string, spouseId: string) => void;
   initialSpouseId?: string | null;
   initialFatherId?: string | null;
   initialMotherId?: string | null;
@@ -28,6 +30,8 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
   initialData,
   allMembers,
   parentChildEdges = [],
+  unions = [],
+  onUnlinkSpouse,
   initialSpouseId,
   initialFatherId,
   initialMotherId,
@@ -175,8 +179,30 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
     ? getDescendantIds(initialData.id, parentChildEdges)
     : new Set<string>();
 
-  const eligibleMembers = allMembers.filter((m) => !initialData?.id || m.id !== initialData.id);
-  const eligibleParents = eligibleMembers.filter((m) => !descendantIds.has(m.id));
+  const currentSpouseIds = initialData?.id && unions
+    ? unions
+        .filter((u) => u.partner1Id === initialData.id || u.partner2Id === initialData.id)
+        .map((u) => (u.partner1Id === initialData.id ? u.partner2Id : u.partner1Id))
+    : [];
+
+  const currentSpouses = allMembers.filter((m) => currentSpouseIds.includes(m.id));
+
+  const eligibleMembers = allMembers.filter(
+    (m) => (!initialData?.id || m.id !== initialData.id) && !currentSpouseIds.includes(m.id)
+  );
+  const eligibleParents = allMembers.filter(
+    (m) => (!initialData?.id || m.id !== initialData.id) && !descendantIds.has(m.id)
+  );
+
+  const selectedFatherId = watch('fatherId');
+  const fatherSpouseIds = selectedFatherId && unions
+    ? unions
+        .filter((u) => u.partner1Id === selectedFatherId || u.partner2Id === selectedFatherId)
+        .map((u) => (u.partner1Id === selectedFatherId ? u.partner2Id : u.partner1Id))
+    : [];
+
+  const fatherWives = eligibleParents.filter((m) => m.gender === 'female' && fatherSpouseIds.includes(m.id));
+  const otherEligibleMothers = eligibleParents.filter((m) => m.gender === 'female' && !fatherSpouseIds.includes(m.id));
 
   return (
     <div className="fixed inset-0 z-50 bg-zinc-950/60 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
@@ -427,6 +453,36 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
               Lineage Relational Linkages
             </span>
 
+            {/* Current Spouses Badges (if any) */}
+            {currentSpouses.length > 0 && (
+              <div className="p-2.5 rounded-lg bg-zinc-100/80 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700/60">
+                <span className="block text-zinc-500 mb-1.5 text-[11px] font-semibold">
+                  Current Spouse{currentSpouses.length > 1 ? 's' : ''} ({currentSpouses.length})
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {currentSpouses.map((s) => (
+                    <span
+                      key={s.id}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white dark:bg-zinc-800 text-xs text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 shadow-sm"
+                    >
+                      <Heart className="w-3 h-3 text-heritage-gold shrink-0" />
+                      <span>{s.firstName} {s.lastName}</span>
+                      {onUnlinkSpouse && initialData?.id && (
+                        <button
+                          type="button"
+                          onClick={() => onUnlinkSpouse(initialData.id, s.id)}
+                          className="text-zinc-400 hover:text-rose-500 transition-colors ml-0.5"
+                          title={`Unlink ${s.firstName}`}
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Gender & Spouse row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
               <div>
@@ -440,12 +496,16 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
                 </select>
               </div>
               <div>
-                <label className="block text-zinc-500 mb-1 text-[11px]">Spouse (Optional)</label>
+                <label className="block text-zinc-500 mb-1 text-[11px]">
+                  {currentSpouses.length > 0 ? 'Link Additional Spouse' : 'Spouse (Optional)'}
+                </label>
                 <select
                   {...register('spouseId')}
                   className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200"
                 >
-                  <option value="">None / Unlinked</option>
+                  <option value="">
+                    {currentSpouses.length > 0 ? 'No Additional Spouse' : 'None / Unlinked'}
+                  </option>
                   {eligibleMembers.map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.firstName} {m.lastName} (Gen {m.generation})
@@ -480,13 +540,22 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
                   className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200"
                 >
                   <option value="">No Mother Linked</option>
-                  {eligibleParents
-                    .filter((m) => m.gender === 'female')
-                    .map((m) => (
+                  {fatherWives.length > 0 && (
+                    <optgroup label="Father's Spouses / Wives">
+                      {fatherWives.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.firstName} {m.lastName} (Wife, Gen {m.generation})
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  <optgroup label={fatherWives.length > 0 ? "Other Female Members" : "Eligible Mothers"}>
+                    {otherEligibleMothers.map((m) => (
                       <option key={m.id} value={m.id}>
                         {m.firstName} {m.lastName} (Gen {m.generation})
                       </option>
                     ))}
+                  </optgroup>
                 </select>
               </div>
             </div>

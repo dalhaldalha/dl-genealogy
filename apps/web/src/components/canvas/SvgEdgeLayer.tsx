@@ -10,10 +10,14 @@ interface SvgEdgeLayerProps {
 }
 
 export const SvgEdgeLayer: React.FC<SvgEdgeLayerProps> = memo(({ positions, unions, parentChildEdges, spotlightId }) => {
+  const safeUnions = Array.isArray(unions) ? unions : [];
+  const safeEdges = Array.isArray(parentChildEdges) ? parentChildEdges : [];
+
   const unionLines = useMemo(() => {
-    return unions.map(union => {
+    return safeUnions.map(union => {
       const p1 = positions.get(union.partner1Id);
       const p2 = positions.get(union.partner2Id);
+      if (!p1 || !p2) return null;
       const left = p1.x < p2.x ? p1 : p2;
       const right = p1.x < p2.x ? p2 : p1;
       const { path, midpoint } = calcMarriageLine(left, right);
@@ -37,12 +41,12 @@ export const SvgEdgeLayer: React.FC<SvgEdgeLayerProps> = memo(({ positions, unio
         </g>
       );
     });
-  }, [positions, unions, spotlightId]);
+  }, [positions, safeUnions, spotlightId]);
 
   const parentLines = useMemo(() => {
     // Group parentChildEdges by childId and deduplicate by parentId
     const edgesByChild = new Map<string, ParentChild[]>();
-    for (const edge of parentChildEdges) {
+    for (const edge of safeEdges) {
       if (!edgesByChild.has(edge.childId)) {
         edgesByChild.set(edge.childId, []);
       }
@@ -69,7 +73,7 @@ export const SvgEdgeLayer: React.FC<SvgEdgeLayerProps> = memo(({ positions, unio
 
         if (p1 && p2) {
           // Check if there is a union between these two specific parents
-          const union = unions.find(
+          const union = safeUnions.find(
             (u) =>
               (u.partner1Id === p1Id && u.partner2Id === p2Id) ||
               (u.partner1Id === p2Id && u.partner2Id === p1Id)
@@ -136,7 +140,7 @@ export const SvgEdgeLayer: React.FC<SvgEdgeLayerProps> = memo(({ positions, unio
     });
 
     return lines;
-  }, [positions, parentChildEdges, unions, spotlightId]);
+  }, [positions, safeEdges, safeUnions, spotlightId]);
 
   return (
     <svg className="absolute top-0 left-0 w-full h-full overflow-visible pointer-events-none">

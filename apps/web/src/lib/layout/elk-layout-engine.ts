@@ -55,8 +55,22 @@ export async function computeTreeLayout(
         }
       }
 
-      // Sort cluster: male partner (husband) first, then wives
-      clusterMembers.sort((a, b) => {
+      // Count connections within cluster to find hub member (e.g. husband with multiple wives)
+      const connectionCount = new Map<string, number>();
+      for (const mId of clusterMembers) {
+        const spouses = spouseGraph.get(mId);
+        let count = 0;
+        if (spouses) {
+          for (const s of spouses) {
+            if (clusterMembers.includes(s)) count++;
+          }
+        }
+        connectionCount.set(mId, count);
+      }
+
+      const sortedByHub = [...clusterMembers].sort((a, b) => {
+        const cntDiff = (connectionCount.get(b) || 0) - (connectionCount.get(a) || 0);
+        if (cntDiff !== 0) return cntDiff;
         const mA = memberMap.get(a);
         const mB = memberMap.get(b);
         if (mA?.gender === 'male' && mB?.gender !== 'male') return -1;
@@ -64,14 +78,51 @@ export async function computeTreeLayout(
         return 0;
       });
 
-      const clusterId = `family_${clusterMembers[0]}`;
-      clusters.push({ id: clusterId, members: clusterMembers });
-      for (const mId of clusterMembers) {
+      const hubId = sortedByHub[0];
+      const otherMembers = clusterMembers.filter((m) => m !== hubId);
+
+      let orderedCluster: string[] = [];
+      if (otherMembers.length <= 1) {
+        // Standard couple: male first if present
+        orderedCluster = [hubId, ...otherMembers];
+        const m0 = memberMap.get(orderedCluster[0]);
+        const m1 = memberMap.get(orderedCluster[1]);
+        if (m1?.gender === 'male' && m0?.gender !== 'male') {
+          orderedCluster = [orderedCluster[1], orderedCluster[0]];
+        }
+      } else if (otherMembers.length === 2) {
+        // Exactly 2 wives: center the husband: [Wife 1, Husband, Wife 2]
+        orderedCluster = [otherMembers[0], hubId, otherMembers[1]];
+      } else {
+        // 3 or more wives: alternate wives around husband: [W2, W0, Hub, W1, W3, ...]
+        const leftSide: string[] = [];
+        const rightSide: string[] = [];
+        otherMembers.forEach((m, idx) => {
+          if (idx % 2 === 0) {
+            leftSide.unshift(m);
+          } else {
+            rightSide.push(m);
+          }
+        });
+        orderedCluster = [...leftSide, hubId, ...rightSide];
+      }
+
+      const clusterId = `family_${hubId}`;
+      clusters.push({ id: clusterId, members: orderedCluster });
+      for (const mId of orderedCluster) {
         memberToClusterId.set(mId, clusterId);
       }
     } else {
       visited.add(member.id);
     }
+  }
+
+  // Map member to their index inside their cluster
+  const memberToClusterIndex = new Map<string, number>();
+  for (const cluster of clusters) {
+    cluster.members.forEach((mId, idx) => {
+      memberToClusterIndex.set(mId, idx);
+    });
   }
 
   const nodes: ElkNode[] = [];
@@ -114,6 +165,43 @@ export async function computeTreeLayout(
     processedMembers.add(member.id);
   }
 
+  // Helper to determine a child's parent horizontal index in a cluster
+  const getChildClusterIndex = (childId: string, clusterId: string): number => {
+    const parents = parentChildEdges.filter((pc) => pc.childId === childId);
+    // 1. Prefer female parent (mother) in cluster
+    for (const p of parents) {
+      const pMember = memberMap.get(p.parentId);
+      if (pMember?.gender === 'female' && memberToClusterId.get(p.parentId) === clusterId) {
+        return memberToClusterIndex.get(p.parentId) ?? 0;
+      }
+    }
+    // 2. Fallback to any parent in cluster
+    for (const p of parents) {
+      if (memberToClusterId.get(p.parentId) === clusterId) {
+        return memberToClusterIndex.get(p.parentId) ?? 0;
+      }
+    }
+    return 0;
+  };
+
+  // Sort parentChildEdges so children are ordered by their mother's cluster position
+  const sortedParentChildEdges = [...parentChildEdges].sort((a, b) => {
+    const parentClusterA = memberToClusterId.get(a.parentId) || a.parentId;
+    const parentClusterB = memberToClusterId.get(b.parentId) || b.parentId;
+    if (parentClusterA !== parentClusterB) return parentClusterA.localeCompare(parentClusterB);
+
+    const idxA = getChildClusterIndex(a.childId, parentClusterA);
+    const idxB = getChildClusterIndex(b.childId, parentClusterB);
+    if (idxA !== idxB) return idxA - idxB;
+
+    const childA = memberMap.get(a.childId);
+    const childB = memberMap.get(b.childId);
+    if (childA?.dateOfBirth && childB?.dateOfBirth) {
+      return childA.dateOfBirth.localeCompare(childB.dateOfBirth);
+    }
+    return (childA?.firstName || '').localeCompare(childB?.firstName || '');
+  });
+
   // Create edges with self-loop and cycle prevention
   const edges = [];
   const processedEdges = new Set<string>();
@@ -133,7 +221,7 @@ export async function computeTreeLayout(
     return false;
   };
 
-  for (const pc of parentChildEdges) {
+  for (const pc of sortedParentChildEdges) {
     const parentClusterId = memberToClusterId.get(pc.parentId);
     const sourceId = parentClusterId || pc.parentId;
     const childClusterId = memberToClusterId.get(pc.childId);

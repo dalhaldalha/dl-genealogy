@@ -97,6 +97,52 @@ async function runTests() {
   const beatrice = layout.get('mem_2')!;
   assert(Math.abs(archibald.y - beatrice.y) < 5, `Spouses Archibald & Beatrice on same Y level: ${archibald.y} vs ${beatrice.y}`);
 
+  // 5. Multi-Wife (Polygyny) Clustering & Linkage Tests
+  console.log('\n5. Multi-Wife (Polygyny) Clustering & Linkage Tests');
+  const polyMembers: any[] = [
+    { id: 'lawan', firstName: 'Lawan', lastName: 'Dalhatu', gender: 'male', generation: 1, branch: 'paternal' },
+    { id: 'rahmatu', firstName: 'Rahmatu', lastName: 'Lawan', gender: 'female', generation: 1, branch: 'paternal' },
+    { id: 'fatima', firstName: 'Fatima', lastName: 'Lawan', gender: 'female', generation: 1, branch: 'paternal' },
+    { id: 'dalha', firstName: 'Dalha', lastName: 'Lawan', gender: 'male', generation: 2, branch: 'paternal' },
+    { id: 'rukayya', firstName: 'Rukayya', lastName: 'Lawan', gender: 'female', generation: 2, branch: 'paternal' },
+  ];
+  const polyUnions: any[] = [
+    { id: 'u_lr', partner1Id: 'lawan', partner2Id: 'rahmatu', unionType: 'marriage' },
+    { id: 'u_lf', partner1Id: 'lawan', partner2Id: 'fatima', unionType: 'marriage' },
+  ];
+  const polyEdges: any[] = [
+    { id: 'pc_ld', parentId: 'lawan', childId: 'dalha' },
+    { id: 'pc_rd', parentId: 'rahmatu', childId: 'dalha' },
+    { id: 'pc_lr', parentId: 'lawan', childId: 'rukayya' },
+    { id: 'pc_fr', parentId: 'fatima', childId: 'rukayya' },
+  ];
+
+  const polyLayout = await computeTreeLayout(polyMembers, polyEdges, polyUnions);
+  const pLawan = polyLayout.get('lawan')!;
+  const pRahmatu = polyLayout.get('rahmatu')!;
+  const pFatima = polyLayout.get('fatima')!;
+  const pDalha = polyLayout.get('dalha')!;
+  const pRukayya = polyLayout.get('rukayya')!;
+
+  assert(Boolean(pLawan && pRahmatu && pFatima), 'All parents positioned in multi-wife family');
+  assert(pRahmatu.x < pLawan.x && pLawan.x < pFatima.x, `Husband Lawan centered between Wife 1 & Wife 2: Rahmatu (${pRahmatu.x}) < Lawan (${pLawan.x}) < Fatima (${pFatima.x})`);
+
+  // Verify marriage lines and midpoints
+  const m1 = calcMarriageLine(pRahmatu, pLawan);
+  const m2 = calcMarriageLine(pLawan, pFatima);
+  assert(m1.midpoint.x > pRahmatu.x + pRahmatu.width && m1.midpoint.x < pLawan.x, `Marriage 1 ring is strictly in gap between Rahmatu & Lawan: ${m1.midpoint.x}`);
+  assert(m2.midpoint.x > pLawan.x + pLawan.width && m2.midpoint.x < pFatima.x, `Marriage 2 ring is strictly in gap between Lawan & Fatima: ${m2.midpoint.x}`);
+
+  // Verify children positioning aligns with their respective mothers
+  assert(pDalha.x < pRukayya.x, `Wife 1 child Dalha (${pDalha.x}) is positioned to the left of Wife 2 child Rukayya (${pRukayya.x})`);
+
+  // Verify non-adjacent marriage bridge under-card routing
+  const nonAdjacent = calcMarriageLine(
+    { x: 100, y: 12, width: 270, height: 160 },
+    { x: 800, y: 12, width: 270, height: 160 }
+  );
+  assert(nonAdjacent.midpoint.y > 12 + 160, `Non-adjacent spousal curve dips cleanly below cards: apex Y is ${nonAdjacent.midpoint.y}`);
+
   console.log(`\n========================================`);
   console.log(`Test Results: ${passed} passed, ${failed} failed`);
   console.log(`========================================\n`);
