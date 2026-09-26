@@ -8,8 +8,10 @@ const createMemberSchema = z.object({
   lastName: z.string().min(1),
   maidenName: z.string().nullable().optional().or(z.literal('')),
   gender: z.nativeEnum(Gender).optional(),
-  dateOfBirth: z.string().transform(str => (str && str.trim() !== '') ? new Date(str) : new Date()),
+  dateOfBirth: z.string().optional().transform(str => (str && str.trim() !== '') ? new Date(str) : new Date('1970-01-01')),
+  rawBirthDate: z.string().nullable().optional().or(z.literal('')),
   dateOfDeath: z.string().nullable().optional().transform(str => (str && str.trim() !== '') ? new Date(str) : undefined),
+  rawDeathDate: z.string().nullable().optional().or(z.literal('')),
   isDeceased: z.boolean().optional(),
   generation: z.number().optional(),
   branch: z.nativeEnum(Branch).optional(),
@@ -28,7 +30,9 @@ const updateMemberSchema = z.object({
   maidenName: z.string().nullable().optional().or(z.literal('')),
   gender: z.nativeEnum(Gender).optional(),
   dateOfBirth: z.string().optional().transform(str => (str && str.trim() !== '') ? new Date(str) : undefined),
+  rawBirthDate: z.string().nullable().optional().or(z.literal('')),
   dateOfDeath: z.string().nullable().optional().transform(str => (str && str.trim() !== '') ? new Date(str) : undefined),
+  rawDeathDate: z.string().nullable().optional().or(z.literal('')),
   isDeceased: z.boolean().optional(),
   generation: z.number().optional(),
   branch: z.nativeEnum(Branch).optional(),
@@ -49,6 +53,11 @@ async function resolveTreeId(treeId: string): Promise<string> {
     data: { name: 'My Family Tree', subtitle: 'Our Family Lineage' }
   });
   return newTree.id;
+}
+
+function extractYear(raw: string): number | null {
+  const match = raw.match(/(\d{4})/);
+  return match ? parseInt(match[1], 10) : null;
 }
 
 export default async function membersPlugin(server: FastifyInstance) {
@@ -78,9 +87,25 @@ export default async function membersPlugin(server: FastifyInstance) {
       const parsedData = createMemberSchema.parse(request.body);
       const { spouseId, fatherId, motherId, ...memberData } = parsedData;
 
+      let birthYear: number | null = null;
+      if (memberData.rawBirthDate && memberData.rawBirthDate.trim() !== '') {
+        birthYear = extractYear(memberData.rawBirthDate);
+      } else if (memberData.dateOfBirth) {
+        birthYear = memberData.dateOfBirth.getFullYear();
+      }
+
+      let deathYear: number | null = null;
+      if (memberData.rawDeathDate && memberData.rawDeathDate.trim() !== '') {
+        deathYear = extractYear(memberData.rawDeathDate);
+      } else if (memberData.dateOfDeath) {
+        deathYear = memberData.dateOfDeath.getFullYear();
+      }
+
       const member = await prisma.familyMember.create({
         data: {
           ...memberData,
+          birthYear,
+          deathYear,
           treeId: resolvedId
         }
       });
@@ -175,9 +200,27 @@ export default async function membersPlugin(server: FastifyInstance) {
       const parsedData = updateMemberSchema.parse(request.body);
       const { spouseId, fatherId, motherId, ...memberData } = parsedData;
 
+      let birthYear: number | null | undefined = undefined;
+      if (memberData.rawBirthDate !== undefined) {
+        birthYear = memberData.rawBirthDate ? extractYear(memberData.rawBirthDate) : null;
+      } else if (memberData.dateOfBirth) {
+        birthYear = memberData.dateOfBirth.getFullYear();
+      }
+
+      let deathYear: number | null | undefined = undefined;
+      if (memberData.rawDeathDate !== undefined) {
+        deathYear = memberData.rawDeathDate ? extractYear(memberData.rawDeathDate) : null;
+      } else if (memberData.dateOfDeath) {
+        deathYear = memberData.dateOfDeath.getFullYear();
+      }
+
       const member = await prisma.familyMember.update({
         where: { id: memberId },
-        data: memberData
+        data: {
+          ...memberData,
+          ...(birthYear !== undefined && { birthYear }),
+          ...(deathYear !== undefined && { deathYear }),
+        }
       });
 
       // Find current parent links for this member

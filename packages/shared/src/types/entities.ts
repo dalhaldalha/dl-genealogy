@@ -2,7 +2,7 @@ export type Gender = 'male' | 'female';
 export type Branch = 'paternal' | 'maternal';
 export type RelationshipType = 'biological' | 'adoptive' | 'step';
 export type UnionType = 'marriage' | 'partnership' | 'divorced';
-export type ArtifactType = 'photo' | 'document' | 'letter' | 'certificate';
+export type ArtifactType = 'photo' | 'document' | 'letter' | 'certificate' | 'audio' | 'video';
 
 export interface FamilyMember {
   id: string;
@@ -12,6 +12,10 @@ export interface FamilyMember {
   gender: Gender;
   dateOfBirth: string; // ISO date
   dateOfDeath: string | null;
+  rawBirthDate: string | null;
+  rawDeathDate: string | null;
+  birthYear: number | null;
+  deathYear: number | null;
   isDeceased: boolean;
   generation: number;
   branch: Branch;
@@ -85,11 +89,13 @@ export interface CreateMemberInput {
   firstName: string;
   lastName: string;
   dateOfBirth: string;
+  rawBirthDate?: string | null;
   maidenName?: string | null;
   gender?: Gender;
   branch?: Branch;
   isDeceased?: boolean;
   dateOfDeath?: string | null;
+  rawDeathDate?: string | null;
   generation?: number;
   profession?: string | null;
   residence?: string | null;

@@ -42,6 +42,10 @@ model FamilyMember {
   gender      Gender    @default(unknown)
   dateOfBirth DateTime
   dateOfDeath DateTime?
+  rawBirthDate String?   @db.VarChar(100)
+  rawDeathDate String?   @db.VarChar(100)
+  birthYear   Int?
+  deathYear   Int?
   isDeceased  Boolean   @default(false)
   generation  Int       @default(1)
   branch      Branch    @default(paternal)
@@ -114,6 +118,8 @@ enum ArtifactType {
   document
   letter
   certificate
+  audio
+  video
 }
 
 model MediaArtifact {

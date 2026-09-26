@@ -27,8 +27,8 @@ export function MemberNodeCard({
   onEdit,
   onAddChild,
 }: MemberNodeCardProps) {
-  const isDeceased = !!member.dateOfDeath;
-  const ageInfo = calculateAge(member.dateOfBirth, member.dateOfDeath, isDeceased);
+  const isDeceased = !!member.dateOfDeath || !!member.rawDeathDate;
+  const ageInfo = calculateAge(member.dateOfBirth, member.dateOfDeath, isDeceased, member.rawBirthDate, member.rawDeathDate);
 
   return (
     <GlassCard

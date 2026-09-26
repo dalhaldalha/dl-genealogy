@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { FamilyMember, ParentChild, Union } from '@kinfolk/shared';
-import { X, Heart, Crosshair, Image as ImageIcon, Edit3 } from 'lucide-react';
+import { X, Heart, Crosshair, Image as ImageIcon, Edit3, Link2, Users } from 'lucide-react';
 import { ProfileHero } from './ProfileHero';
 import { VitalStatsGrid } from './VitalStatsGrid';
 import { BiographySection } from './BiographySection';
@@ -18,6 +18,7 @@ export interface SpotlightDrawerProps {
   onSpotlight: (id: string) => void;
   onEdit: (id: string) => void;
   onRecenter?: (id: string) => void;
+  onKinshipClick?: () => void;
 }
 
 export function SpotlightDrawer({
@@ -31,7 +32,10 @@ export function SpotlightDrawer({
   onSpotlight,
   onEdit,
   onRecenter,
+  onKinshipClick,
 }: SpotlightDrawerProps) {
+  const [copied, setCopied] = useState(false);
+
   return (
     <aside
       className={`fixed top-0 right-0 h-[100dvh] w-full max-w-lg bg-zinc-900/95 backdrop-blur-2xl border-l border-zinc-700/50 shadow-2xl z-50 transform transition-transform duration-300 ease-in-out flex flex-col ${
@@ -62,6 +66,15 @@ export function SpotlightDrawer({
               </span>
             </div>
             <div className="flex items-center gap-1.5 sm:gap-2">
+              {onKinshipClick && (
+                <button
+                  onClick={onKinshipClick}
+                  className="p-2 text-zinc-400 hover:text-heritage-gold transition-colors rounded-xl hover:bg-zinc-800"
+                  title="Compare Relationship"
+                >
+                  <Users className="w-4 h-4" />
+                </button>
+              )}
               {isAdmin && (
                 <button
                   onClick={() => onEdit(member.id)}
@@ -101,24 +114,49 @@ export function SpotlightDrawer({
               />
             </div>
 
+            {audioArtifacts.length > 0 && (
+              <div className="space-y-3 sm:space-y-4">
+                <h4 className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
+                  <Disc className="w-4 h-4 text-heritage-gold" />
+                  Oral History
+                </h4>
+                <OralHistoryPlayer artifacts={audioArtifacts} />
+              </div>
+            )}
+
             <div className="space-y-3 sm:space-y-4">
               <h4 className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
                 <ImageIcon className="w-4 h-4 text-heritage-gold" />
                 Archive Gallery
               </h4>
-              <ArtifactGallery artifacts={[]} />
+              <ArtifactGallery artifacts={visualArtifacts} />
             </div>
           </div>
 
           {/* Drawer Footer Actions */}
           <div className="p-3.5 sm:p-4 pb-6 sm:pb-4 border-t border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50 flex items-center justify-between shrink-0">
-            <button
-              className="flex items-center gap-1.5 text-xs text-heritage-gold hover:underline font-semibold py-2 px-1 active:scale-95 transition-all"
-              onClick={() => onRecenter?.(member.id)}
-            >
-              <Crosshair className="w-4 h-4" />
-              <span>Re-center Canvas</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                className="flex items-center gap-1.5 text-xs text-heritage-gold hover:underline font-semibold py-2 px-1 active:scale-95 transition-all"
+                onClick={() => onRecenter?.(member.id)}
+              >
+                <Crosshair className="w-4 h-4" />
+                <span>Re-center Canvas</span>
+              </button>
+              <button
+                className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-heritage-gold font-medium py-2 px-1 active:scale-95 transition-all"
+                onClick={() => {
+                  const url = new URL(window.location.href);
+                  url.searchParams.set('member', member.id);
+                  navigator.clipboard.writeText(url.toString());
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                }}
+              >
+                <Link2 className="w-3.5 h-3.5" />
+                <span>{copied ? 'Copied!' : 'Copy Link'}</span>
+              </button>
+            </div>
             <button
               className="px-4 py-2.5 rounded-xl bg-zinc-200 dark:bg-zinc-800 text-xs font-semibold hover:bg-zinc-300 dark:hover:bg-zinc-700 active:scale-95 transition-all text-zinc-800 dark:text-zinc-200"
               onClick={onClose}

@@ -1,13 +1,14 @@
 import React from 'react';
-import { Heart } from 'lucide-react';
+import { Heart, Users } from 'lucide-react';
 import { MobileCanvasControls } from '@/components/canvas/MobileCanvasControls';
 
 interface BottomHudProps {
   miniMap?: React.ReactNode;
   adminFab?: React.ReactNode;
+  onKinshipClick?: () => void;
 }
 
-export const BottomHud: React.FC<BottomHudProps> = ({ miniMap, adminFab }) => {
+export const BottomHud: React.FC<BottomHudProps> = ({ miniMap, adminFab, onKinshipClick }) => {
   return (
     <>
       {/* Bottom-Left: Mini Map Navigator */}
@@ -38,7 +39,20 @@ export const BottomHud: React.FC<BottomHudProps> = ({ miniMap, adminFab }) => {
             <span className="text-zinc-600 dark:text-zinc-300">Marriage</span>
           </div>
           <div className="w-px h-3 bg-zinc-300 dark:bg-zinc-700 hidden sm:block" />
-          <span className="text-zinc-400 text-[11px] hidden sm:inline">Tap card to Spotlight · Drag to Pan</span>
+          <span className="text-zinc-400 text-[11px] hidden sm:inline">Tap card to Spotlight • Drag to Pan</span>
+          
+          {onKinshipClick && (
+            <>
+              <div className="w-px h-3 bg-zinc-300 dark:bg-zinc-700 hidden sm:block" />
+              <button
+                onClick={onKinshipClick}
+                className="flex items-center gap-1.5 text-heritage-gold hover:text-amber-500 transition-colors font-medium hover:bg-heritage-gold/10 px-2 py-0.5 rounded-md"
+              >
+                <Users className="w-3.5 h-3.5" />
+                <span>How Are We Related?</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
 

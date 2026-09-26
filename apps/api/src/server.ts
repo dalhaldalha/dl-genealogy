@@ -5,6 +5,8 @@ import treesPlugin from './routes/trees';
 import membersPlugin from './routes/members';
 import relationshipsPlugin from './routes/relationships';
 import searchPlugin from './routes/search';
+import artifactsPlugin from './routes/artifacts';
+import gedcomPlugin from './routes/gedcom';
 
 const server: FastifyInstance = fastify({ logger: true });
 
@@ -27,6 +29,8 @@ server.register(treesPlugin);
 server.register(membersPlugin);
 server.register(relationshipsPlugin);
 server.register(searchPlugin);
+server.register(artifactsPlugin);
+server.register(gedcomPlugin);
 
 export default server;
 export { server };

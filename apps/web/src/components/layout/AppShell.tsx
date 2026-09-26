@@ -6,6 +6,7 @@ import { CanvasContainer } from '../canvas/CanvasContainer';
 import { SvgEdgeLayer } from '../canvas/SvgEdgeLayer';
 import { GenerationBanner } from '../canvas/GenerationBanner';
 import { MemberNodeCard } from '../nodes/MemberNodeCard';
+import { CompactNodePill } from '../nodes/CompactNodePill';
 import { SpotlightOverlay } from '../spotlight/SpotlightOverlay';
 import { SpotlightDrawer } from '../spotlight/SpotlightDrawer';
 import { RadarMiniMap } from '../radar/RadarMiniMap';
@@ -13,6 +14,7 @@ import { AdminFab } from '../admin/AdminFab';
 import { MemberFormModal } from '../admin/MemberFormModal';
 import { DeleteConfirmDialog } from '../admin/DeleteConfirmDialog';
 import { AdminLoginModal } from '../auth/AdminLoginModal';
+import { KinshipModal } from '../kinship/KinshipModal';
 import { UserPlus } from 'lucide-react';
 import { useCanvasStore } from '@/stores/canvas-store';
 import { useTreeStore } from '@/stores/tree-store';
@@ -81,6 +83,8 @@ export const AppShell: React.FC = () => {
   const [editingFatherId, setEditingFatherId] = useState<string | null>(null);
   const [editingMotherId, setEditingMotherId] = useState<string | null>(null);
   const [deletingMember, setDeletingMember] = useState<FamilyMember | null>(null);
+  const [isKinshipOpen, setIsKinshipOpen] = useState(false);
+  const [kinshipInitialMemberA, setKinshipInitialMemberA] = useState<string | null>(null);
 
   // Tree data state (starts from local cache if present, filled by Supabase or user additions)
   const [treeState, setTreeState] = useState<FamilyTreeFull>(() => {
@@ -124,6 +128,7 @@ export const AppShell: React.FC = () => {
   const members = Array.isArray(treeState?.members) ? treeState.members : [];
   const parentChildEdges = Array.isArray(treeState?.parentChildEdges) ? treeState.parentChildEdges : [];
   const unions = Array.isArray(treeState?.unions) ? treeState.unions : [];
+  const artifacts = Array.isArray(treeState?.artifacts) ? treeState.artifacts : [];
 
   // Window viewport size tracking for layout & radar
   const [viewportSize, setViewportSize] = useState({
@@ -216,6 +221,46 @@ export const AppShell: React.FC = () => {
     },
     [focusMember, nodePositions, centerOnNode, viewportSize]
   );
+
+  // URL Deep Linking: Read params on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const memberId = params.get('member');
+    const urlZoom = params.get('zoom');
+    const urlX = params.get('x');
+    const urlY = params.get('y');
+    
+    if (urlZoom || urlX || urlY) {
+      const { scale: currentScale } = useCanvasStore.getState();
+      useCanvasStore.setState({
+        scale: urlZoom ? parseFloat(urlZoom) : currentScale,
+        translateX: urlX ? parseFloat(urlX) : 80,
+        translateY: urlY ? parseFloat(urlY) : 20,
+      });
+    }
+    
+    if (memberId) {
+      // Delay slightly to let tree data load
+      const timer = setTimeout(() => {
+        handleSpotlight(memberId);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, []); // Run once on mount
+
+  // URL Deep Linking: Sync state to URL
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams();
+      if (focusedMemberId) params.set('member', focusedMemberId);
+      params.set('zoom', scale.toFixed(2));
+      params.set('x', Math.round(translateX).toString());
+      params.set('y', Math.round(translateY).toString());
+      const newUrl = `${window.location.pathname}?${params.toString()}`;
+      window.history.replaceState(null, '', newUrl);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [focusedMemberId, scale, translateX, translateY]);
 
   // Admin Actions
   const handleAddClick = () => {
@@ -690,6 +735,20 @@ export const AppShell: React.FC = () => {
             const isFiltered =
               activeBranchFilter !== 'all' && member.branch !== activeBranchFilter;
 
+            // LOD: Use compact pills at low zoom
+            if (scale < 0.55) {
+              return (
+                <CompactNodePill
+                  key={member.id}
+                  member={member}
+                  position={pos}
+                  isSpotlighted={focusedMemberId === member.id}
+                  isFiltered={isFiltered}
+                  onSpotlight={handleSpotlight}
+                />
+              );
+            }
+
             return (
               <MemberNodeCard
                 key={member.id}
@@ -717,6 +776,10 @@ export const AppShell: React.FC = () => {
             />
           }
           adminFab={role === 'admin' ? <AdminFab onClick={handleAddClick} /> : null}
+          onKinshipClick={() => {
+            setKinshipInitialMemberA(null);
+            setIsKinshipOpen(true);
+          }}
         />
       </main>
 
@@ -729,6 +792,7 @@ export const AppShell: React.FC = () => {
         allMembers={dynamicMembers}
         parentChildEdges={parentChildEdges}
         unions={unions}
+        artifacts={artifacts}
         onClose={closeFocus}
         onSpotlight={handleSpotlight}
         onEdit={handleEdit}
@@ -736,6 +800,12 @@ export const AppShell: React.FC = () => {
           handleSpotlight(id);
           if (viewportSize.width < 768) {
             closeFocus();
+          }
+        }}
+        onKinshipClick={() => {
+          if (focusedMember) {
+            setKinshipInitialMemberA(focusedMember.id);
+            setIsKinshipOpen(true);
           }
         }}
       />
@@ -774,6 +844,17 @@ export const AppShell: React.FC = () => {
 
       {/* 6. ADMIN LOGIN MODAL */}
       <AdminLoginModal />
+
+      {/* 7. KINSHIP CALCULATOR MODAL */}
+      <KinshipModal
+        isOpen={isKinshipOpen}
+        onClose={() => setIsKinshipOpen(false)}
+        members={dynamicMembers}
+        parentChildEdges={parentChildEdges}
+        unions={unions}
+        onSpotlight={handleSpotlight}
+        initialMemberA={kinshipInitialMemberA}
+      />
     </div>
   );
 };

@@ -40,6 +40,8 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [isApproxBirth, setIsApproxBirth] = useState(false);
+  const [isApproxDeath, setIsApproxDeath] = useState(false);
 
   const {
     register,
@@ -57,8 +59,10 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
       branch: 'paternal' as 'paternal' | 'maternal',
       gender: 'male' as 'male' | 'female',
       dateOfBirth: '',
+      rawBirthDate: '',
       isDeceased: false,
       dateOfDeath: '',
+      rawDeathDate: '',
       profession: '',
       residence: '',
       avatarUrl: '',
@@ -80,8 +84,10 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
           branch: (initialData.branch as 'paternal' | 'maternal') || 'paternal',
           gender: initialData.gender === 'female' ? 'female' : 'male',
           dateOfBirth: initialData.dateOfBirth ? initialData.dateOfBirth.split('T')[0] : '',
+          rawBirthDate: initialData.rawBirthDate || '',
           isDeceased: Boolean(initialData.isDeceased),
           dateOfDeath: initialData.dateOfDeath ? initialData.dateOfDeath.split('T')[0] : '',
+          rawDeathDate: initialData.rawDeathDate || '',
           profession: initialData.profession || '',
           residence: initialData.residence || '',
           avatarUrl: initialData.avatarUrl || '',
@@ -98,8 +104,10 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
           branch: 'paternal',
           gender: 'male',
           dateOfBirth: '',
+          rawBirthDate: '',
           isDeceased: false,
           dateOfDeath: '',
+          rawDeathDate: '',
           profession: '',
           residence: '',
           avatarUrl: '',
@@ -112,6 +120,8 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
       setUploadError(null);
       setIsUploading(false);
       setIsDragOver(false);
+      setIsApproxBirth(!!initialData?.rawBirthDate);
+      setIsApproxDeath(!!initialData?.rawDeathDate);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -294,15 +304,33 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
           {/* Lifespan & Dates */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
             <div>
-              <label className="block font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
-                Date of Birth *
-              </label>
-              <input
-                type="date"
-                {...register('dateOfBirth')}
-                className="w-full px-3 py-2 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:ring-1 focus:ring-heritage-gold transition-all"
-              />
-              {errors.dateOfBirth && (
+              <div className="flex items-center justify-between mb-1">
+                <label className="font-semibold text-zinc-700 dark:text-zinc-300">Date of Birth *</label>
+                <label className="flex items-center gap-1.5 text-[10px] text-zinc-500 font-medium">
+                  <input 
+                    type="checkbox" 
+                    checked={isApproxBirth} 
+                    onChange={(e) => setIsApproxBirth(e.target.checked)} 
+                    className="rounded border-zinc-300 text-heritage-gold focus:ring-heritage-gold w-3 h-3"
+                  />
+                  Approximate / Historical Date
+                </label>
+              </div>
+              {isApproxBirth ? (
+                <input
+                  type="text"
+                  placeholder="e.g. c. 1920, ABT 1945, BEF 1960"
+                  {...register('rawBirthDate')}
+                  className="w-full px-3 py-2 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:ring-1 focus:ring-heritage-gold transition-all"
+                />
+              ) : (
+                <input
+                  type="date"
+                  {...register('dateOfBirth')}
+                  className="w-full px-3 py-2 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:ring-1 focus:ring-heritage-gold transition-all"
+                />
+              )}
+              {errors.dateOfBirth && !isApproxBirth && (
                 <span className="text-[10px] text-rose-500 mt-0.5 block">
                   {errors.dateOfBirth.message as string}
                 </span>
@@ -310,21 +338,46 @@ export const MemberFormModal: React.FC<MemberFormModalProps> = ({
             </div>
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="font-semibold text-zinc-700 dark:text-zinc-300">Is Deceased?</label>
-                <input
-                  type="checkbox"
-                  {...register('isDeceased')}
-                  className="rounded border-zinc-300 text-heritage-gold focus:ring-heritage-gold"
-                />
+                <div className="flex items-center gap-2">
+                  <label className="font-semibold text-zinc-700 dark:text-zinc-300">Is Deceased?</label>
+                  <input
+                    type="checkbox"
+                    {...register('isDeceased')}
+                    className="rounded border-zinc-300 text-heritage-gold focus:ring-heritage-gold"
+                  />
+                </div>
+                {isDeceased && (
+                  <label className="flex items-center gap-1.5 text-[10px] text-zinc-500 font-medium">
+                    <input 
+                      type="checkbox" 
+                      checked={isApproxDeath} 
+                      onChange={(e) => setIsApproxDeath(e.target.checked)} 
+                      className="rounded border-zinc-300 text-heritage-gold focus:ring-heritage-gold w-3 h-3"
+                    />
+                    Approximate
+                  </label>
+                )}
               </div>
-              <input
-                type="date"
-                {...register('dateOfDeath')}
-                disabled={!isDeceased}
-                className={`w-full px-3 py-2 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:ring-1 focus:ring-heritage-gold transition-all ${
-                  !isDeceased ? 'opacity-50 cursor-not-allowed' : ''
-                }`}
-              />
+              {isApproxDeath ? (
+                <input
+                  type="text"
+                  placeholder="e.g. c. 1985, AFT 1990"
+                  {...register('rawDeathDate')}
+                  disabled={!isDeceased}
+                  className={`w-full px-3 py-2 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:ring-1 focus:ring-heritage-gold transition-all ${
+                    !isDeceased ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
+                />
+              ) : (
+                <input
+                  type="date"
+                  {...register('dateOfDeath')}
+                  disabled={!isDeceased}
+                  className={`w-full px-3 py-2 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:ring-1 focus:ring-heritage-gold transition-all ${
+                    !isDeceased ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
+                />
+              )}
               {errors.dateOfDeath && (
                 <span className="text-[10px] text-rose-500 mt-0.5 block">
                   {errors.dateOfDeath.message as string}
