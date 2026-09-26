@@ -2,6 +2,11 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "pnpm build:vercel",
   "outputDirectory": "apps/web/dist",
+  "functions": {
+    "api/**/*.ts": {
+      "includeFiles": "apps/api/src/**,apps/api/prisma/**,packages/shared/src/**"
+    }
+  },
   "rewrites": [
     {
       "source": "/api/ping",
