@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { FamilyMember, ParentChild, Union } from '@kinfolk/shared';
-import { X, Heart, Crosshair, Image as ImageIcon, Edit3, Link2, Users } from 'lucide-react';
+import { FamilyMember, ParentChild, Union, MediaArtifact } from '@kinfolk/shared';
+import { X, Heart, Crosshair, Image as ImageIcon, Edit3, Link2, Users, Volume2 } from 'lucide-react';
 import { ProfileHero } from './ProfileHero';
 import { VitalStatsGrid } from './VitalStatsGrid';
 import { BiographySection } from './BiographySection';
 import { RelationshipPills } from './RelationshipPills';
 import { ArtifactGallery } from './ArtifactGallery';
+import { OralHistoryPlayer } from './OralHistoryPlayer';
 
 export interface SpotlightDrawerProps {
   member: FamilyMember | null;
@@ -14,6 +15,7 @@ export interface SpotlightDrawerProps {
   allMembers: FamilyMember[];
   parentChildEdges: ParentChild[];
   unions: Union[];
+  artifacts?: MediaArtifact[];
   onClose: () => void;
   onSpotlight: (id: string) => void;
   onEdit: (id: string) => void;
@@ -28,6 +30,7 @@ export function SpotlightDrawer({
   allMembers,
   parentChildEdges,
   unions,
+  artifacts = [],
   onClose,
   onSpotlight,
   onEdit,
@@ -35,6 +38,10 @@ export function SpotlightDrawer({
   onKinshipClick,
 }: SpotlightDrawerProps) {
   const [copied, setCopied] = useState(false);
+
+  const memberArtifacts = member ? artifacts.filter(a => a.memberId === member.id) : [];
+  const audioArtifacts = memberArtifacts.filter(a => a.artifactType === 'audio');
+  const visualArtifacts = memberArtifacts.filter(a => a.artifactType !== 'audio');
 
   return (
     <aside
@@ -117,7 +124,7 @@ export function SpotlightDrawer({
             {audioArtifacts.length > 0 && (
               <div className="space-y-3 sm:space-y-4">
                 <h4 className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
-                  <Disc className="w-4 h-4 text-heritage-gold" />
+                  <Volume2 className="w-4 h-4 text-heritage-gold" />
                   Oral History
                 </h4>
                 <OralHistoryPlayer artifacts={audioArtifacts} />
